@@ -1,8 +1,8 @@
-# 7. 진짜 VLM 파인튜닝
+# 진짜 VLM 파인튜닝
 
-**목표:** 제대로 사전학습된 VLM을 불러와 써 보고, LoRA로 **내가 원하는 출력 형식**에 맞게 파인튜닝합니다. 레슨 5(LoRA)와 레슨 6(VLM 구조)의 합체입니다.
+> ⏱ 60분 · T4 GPU 필요 (약 10분)
 
-> Colab에서 **T4 GPU**를 켜세요. 10분 정도 걸립니다.
+**목표:** 제대로 사전학습된 VLM을 불러와 써 보고, LoRA로 **내가 원하는 출력 형식**에 맞게 파인튜닝합니다. [LLM 파인튜닝](#33-llm-finetune) 레슨(LoRA)와 [미니 VLM](#41-mini-vlm) 레슨(VLM 구조)의 합체입니다.
 
 ## 모델 불러오기: SmolVLM-256M
 
@@ -23,7 +23,7 @@ model = AutoModelForImageTextToText.from_pretrained(name, dtype=torch.float32).t
 print([n for n, _ in model.model.named_children()])   # ['vision_model', 'connector', 'text_model']
 ```
 
-`vision_model`(눈), `connector`(통역사), `text_model`(뇌). 레슨 6에서 직접 만든 세 부품 그대로입니다.
+`vision_model`(눈), `connector`(통역사), `text_model`(뇌). [미니 VLM](#41-mini-vlm) 레슨에서 직접 만든 세 부품 그대로입니다.
 
 ## 사용해 보기: 설명도 하고, 질문에도 답합니다
 
@@ -74,7 +74,7 @@ model.print_trainable_parameters()
 
 ## 배치 만들기
 
-레슨 5와 같습니다. `프롬프트 + 정답`을 통째로 넣고, 프롬프트(이미지 토큰 포함) 부분은 라벨을 `-100`으로 가립니다. 이미지 분할을 꺼 두었기 때문에 프롬프트 길이가 모든 샘플에서 같아 마스킹이 간단합니다.
+[LLM 파인튜닝](#33-llm-finetune) 레슨과 같습니다. `프롬프트 + 정답`을 통째로 넣고, 프롬프트(이미지 토큰 포함) 부분은 라벨을 `-100`으로 가립니다. 이미지 분할을 꺼 두었기 때문에 프롬프트 길이가 모든 샘플에서 같아 마스킹이 간단합니다.
 
 ```python
 prompt = make_prompt(QUESTION)
@@ -136,6 +136,36 @@ model.save_pretrained("caption-lora")
 - **더 큰 모델:** `SmolVLM-500M`, `SmolVLM2-2.2B`, `Qwen2.5-VL-3B`. 메모리가 부족하면 4bit 양자화 + LoRA(QLoRA)를 찾아보세요.
 - **학습 도구:** 직접 짠 루프 대신 Hugging Face `Trainer`나 `trl`의 `SFTTrainer`를 쓰면 체크포인트, 로깅, 혼합 정밀도, 그래디언트 누적을 알아서 해 줍니다. 안에서 하는 일은 여러분이 이미 아는 그 루프입니다.
 - **평가:** 눈으로 보는 것을 넘어, 테스트셋에 대해 정량 지표를 만들어 보세요. "좋아졌다"를 숫자로 말할 수 있어야 실험이 됩니다.
+
+## 핵심 정리
+
+- 실제 VLM도 vision_model / connector / text_model 세 부분으로 이루어져 있습니다.
+- `processor`가 텍스트 토큰화와 이미지 전처리를 함께 처리하고, 채팅 템플릿에 이미지 자리를 넣어 줍니다.
+- 어느 부분에 LoRA를 붙일지(`target_modules`)가 VLM 파인튜닝의 핵심 결정입니다.
+- 학습 절차는 LLM 파인튜닝과 같습니다: 프롬프트+정답을 넣고 정답 부분에서만 손실을 계산합니다.
+- 한 가지 형식만 학습시키면 다른 능력이 약해질 수 있습니다(catastrophic forgetting). 항상 학습하지 않은 과제도 점검하세요.
+
+## 스스로 점검
+
+답을 머릿속으로 먼저 말해 본 뒤 펼쳐 보세요.
+
+<details><summary>Q1. 프롬프트로 '짧게 답해'라고 시키는 것과 파인튜닝의 차이는?</summary>
+
+프롬프트는 매번 지시해야 하고 모델이 안 따를 수도 있습니다. 파인튜닝은 모델의 기본 행동 자체를 바꾸므로 지시 없이도 일관되게 그 형식이 나옵니다. 대신 데이터와 학습이 필요하고 다른 능력이 약해질 위험이 있습니다.
+
+</details>
+
+<details><summary>Q2. <code>target_modules</code>를 정규식으로 <code>text_model</code>에 한정한 이유는?</summary>
+
+`q_proj` 같은 이름은 vision_model 안에도 있어서, 이름만 쓰면 눈과 뇌 양쪽에 LoRA가 붙습니다. 이 과제는 '보는 능력'이 아니라 '말하는 형식'을 바꾸는 것이므로 LLM 쪽만 학습합니다.
+
+</details>
+
+<details><summary>Q3. 파인튜닝 후 반드시 확인해야 할 것 두 가지는?</summary>
+
+① 학습에 쓰지 않은 테스트 데이터에서 원하는 행동이 나오는지, ② 학습시키지 않은 다른 능력(다른 질문에 대한 답)이 망가지지 않았는지.
+
+</details>
 
 ## 직접 고쳐보기
 

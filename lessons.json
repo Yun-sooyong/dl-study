@@ -1,42 +1,116 @@
 [
  {
   "id": "00-start",
-  "title": "0. 시작하기 — 로드맵과 실습 환경",
+  "title": "시작하기 — 로드맵과 학습 방법",
+  "part": "시작",
   "code": false
  },
  {
-  "id": "01-tensor-autograd",
-  "title": "1. 텐서와 자동미분 — 학습이란 무엇인가",
+  "id": "10-ml-first-model",
+  "title": "머신러닝이란 — 첫 모델 만들기",
+  "part": "1부 · 머신러닝 기초",
   "code": true
  },
  {
-  "id": "02-mlp-mnist",
-  "title": "2. 첫 신경망 — 손글씨 숫자 분류기 (MLP)",
+  "id": "11-ml-overfitting",
+  "title": "과적합과 검증 — 모델을 믿어도 되는지 아는 법",
+  "part": "1부 · 머신러닝 기초",
   "code": true
  },
  {
-  "id": "03-cnn",
-  "title": "3. 모델 구조 바꾸기 — CNN, 저장과 불러오기",
+  "id": "12-ml-tabular-trees",
+  "title": "표 데이터와 트리 모델 — 회귀, 랜덤 포레스트, 부스팅",
+  "part": "1부 · 머신러닝 기초",
   "code": true
  },
  {
-  "id": "04-mini-gpt",
-  "title": "4. 나만의 미니 GPT — LLM을 밑바닥부터",
+  "id": "20-tensor-autograd",
+  "title": "텐서와 자동미분 — 학습이란 무엇인가",
+  "part": "2부 · 딥러닝 기초",
   "code": true
  },
  {
-  "id": "05-llm-finetune",
-  "title": "5. 진짜 LLM 파인튜닝 — Hugging Face와 LoRA",
+  "id": "21-mlp-mnist",
+  "title": "첫 신경망 — 손글씨 숫자 분류기 (MLP)",
+  "part": "2부 · 딥러닝 기초",
   "code": true
  },
  {
-  "id": "06-mini-vlm",
-  "title": "6. 나만의 미니 VLM — 눈과 뇌를 이어붙이기",
+  "id": "22-cnn",
+  "title": "모델 구조 바꾸기 — CNN, 저장과 불러오기",
+  "part": "2부 · 딥러닝 기초",
   "code": true
  },
  {
-  "id": "07-vlm-finetune",
-  "title": "7. 진짜 VLM 파인튜닝",
+  "id": "23-training-recipes",
+  "title": "학습 잘 시키는 법 — loss 곡선, 정규화, 스케줄러, 디버깅",
+  "part": "2부 · 딥러닝 기초",
   "code": true
+ },
+ {
+  "id": "24-transfer-learning",
+  "title": "전이학습 — 남이 학습시킨 모델 위에서 시작하기",
+  "part": "2부 · 딥러닝 기초",
+  "code": true
+ },
+ {
+  "id": "30-tokenizer",
+  "title": "토크나이저 — LLM이 글을 보는 방식",
+  "part": "3부 · LLM",
+  "code": true
+ },
+ {
+  "id": "31-mini-gpt",
+  "title": "나만의 미니 GPT — LLM을 밑바닥부터",
+  "part": "3부 · LLM",
+  "code": true
+ },
+ {
+  "id": "32-llm-inference",
+  "title": "사전학습 LLM 다루기 — 생성, 샘플링, 프롬프트",
+  "part": "3부 · LLM",
+  "code": true
+ },
+ {
+  "id": "33-llm-finetune",
+  "title": "LLM 파인튜닝 — Hugging Face와 LoRA",
+  "part": "3부 · LLM",
+  "code": true
+ },
+ {
+  "id": "34-embeddings-rag",
+  "title": "임베딩과 RAG — 모델이 모르는 것을 알려주기",
+  "part": "3부 · LLM",
+  "code": true
+ },
+ {
+  "id": "35-dpo",
+  "title": "선호 학습 (DPO) — \"이 답이 저 답보다 낫다\"로 학습하기",
+  "part": "3부 · LLM",
+  "code": true
+ },
+ {
+  "id": "40-clip",
+  "title": "CLIP — 이미지와 글을 같은 공간에 놓기",
+  "part": "4부 · VLM",
+  "code": true
+ },
+ {
+  "id": "41-mini-vlm",
+  "title": "나만의 미니 VLM — 눈과 뇌를 이어붙이기",
+  "part": "4부 · VLM",
+  "code": true
+ },
+ {
+  "id": "42-vlm-finetune",
+  "title": "진짜 VLM 파인튜닝",
+  "part": "4부 · VLM",
+  "code": true
+ },
+ {
+  "id": "50-your-project",
+  "title": "내 프로젝트 시작하기 — 실전 가이드",
+  "part": "5부 · 내 프로젝트로",
+  "code": false
  }
 ]

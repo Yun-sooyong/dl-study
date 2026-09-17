@@ -1,0 +1,162 @@
+# 임베딩과 RAG — 모델이 모르는 것을 알려주기
+
+> ⏱ 60분 · T4 GPU 권장 (CPU로도 실행 가능)
+
+**목표:** 문장을 벡터로 바꾸는 **임베딩 모델**로 의미 검색을 만들고, 검색 결과를 LLM에 넣어 답하게 하는 **RAG(검색 증강 생성)** 를 밑바닥부터 구현합니다. "우리 회사 문서로 답하는 챗봇"의 핵심 원리입니다.
+
+## 왜 필요한가
+
+LLM은 학습 데이터에 없던 것(사내 규정, 어제 뉴스, 내 메모)을 모릅니다. 모르면 지어냅니다. 해결책은 둘입니다.
+
+| 방법 | 방식 | 적합한 경우 |
+|---|---|---|
+| 파인튜닝 | 가중치에 새겨 넣기 | 말투·형식·행동을 바꿀 때 |
+| **RAG** | 질문과 관련된 문서를 찾아 **프롬프트에 붙여 주기** | **지식**을 추가할 때. 문서가 자주 바뀔 때. 출처가 필요할 때 |
+
+지식을 넣는 데는 RAG가 파인튜닝보다 싸고, 정확하고, 수정하기 쉽습니다.
+
+## 임베딩: 의미가 비슷하면 벡터도 가깝다
+
+임베딩 모델은 문장 하나를 벡터 하나로 바꿉니다. 생성용 LLM과 달리 **인코더** 구조이고, "비슷한 뜻의 문장은 가까이, 다른 뜻은 멀리" 놓이도록 대조 학습되었습니다.
+
+```python
+import torch
+import torch.nn.functional as F
+from transformers import AutoModel, AutoTokenizer
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+emb_name = "BAAI/bge-m3"                         # 100여 개 언어 지원, 5.7억 파라미터. 한국어 검색 성능이 좋음
+emb_tok = AutoTokenizer.from_pretrained(emb_name)
+emb_model = AutoModel.from_pretrained(emb_name).to(device).eval()
+
+@torch.no_grad()
+def embed(texts):
+    batch = emb_tok(texts, padding=True, truncation=True, max_length=512, return_tensors="pt").to(device)
+    hidden = emb_model(**batch).last_hidden_state                  # [문장 수, 토큰 수, 1024]
+    vec = hidden[:, 0]                                             # 맨 앞 [CLS] 토큰의 벡터를 문장 벡터로 사용 (이 모델의 약속)
+    return F.normalize(vec, dim=-1)                                # 길이를 1로 → 내적이 곧 코사인 유사도
+
+v = embed(["안녕하세요"])
+print(v.shape)
+```
+
+```python
+sents = ["강아지가 공원에서 뛰어놀고 있다", "개가 잔디밭을 달린다", "A dog is running in the park",
+         "주식 시장이 오늘 크게 하락했다", "코스피가 급락했다", "오늘 저녁은 김치찌개다"]
+V = embed(sents)
+sim = V @ V.T                                                      # 모든 쌍의 코사인 유사도
+print("      " + "".join(f"{i:>6}" for i in range(len(sents))))
+for i, row in enumerate(sim):
+    print(f"{i:>4}  " + "".join(f"{x:6.2f}" for x in row.tolist()), " ", sents[i])
+```
+
+개 이야기 세 문장(0~2)끼리, 주식 이야기 두 문장(3~4)끼리 점수가 높고 나머지는 낮습니다. 겹치는 단어가 하나도 없는 "강아지가 공원에서…"와 "개가 잔디밭을…", 심지어 영어 문장까지 서로 가깝습니다. 키워드 검색으로는 불가능한 일입니다.
+
+## 의미 검색 만들기
+
+가상의 동네 서점 "새벽책방"의 안내 문서입니다. LLM이 절대 알 수 없는 정보들입니다.
+
+```python
+docs = [
+    "새벽책방의 영업시간은 평일 오전 10시부터 오후 9시까지이며, 주말에는 오전 11시에 열어 오후 7시에 닫는다. 매월 첫째 주 월요일은 정기 휴무일이다.",
+    "새벽책방 회원은 도서를 10% 할인된 가격에 구매할 수 있다. 회원 가입은 무료이며 매장 계산대나 홈페이지에서 할 수 있다.",
+    "구매한 도서는 영수증을 지참하면 14일 이내에 교환 또는 환불할 수 있다. 단, 비닐 포장을 뜯은 만화책과 잡지는 제외된다.",
+    "새벽책방 2층에는 독서 모임을 위한 세미나실이 있다. 최대 12명까지 이용할 수 있고 이용료는 시간당 15,000원이며, 3일 전까지 예약해야 한다.",
+    "매주 토요일 오후 2시에는 어린이 그림책 읽어주기 행사가 1층 어린이 코너에서 열린다. 참가비는 무료이다.",
+    "새벽책방은 중고 도서를 매입한다. 출간 5년 이내의 도서만 가능하며, 상태에 따라 정가의 10~30%를 적립금으로 지급한다.",
+    "매장에 없는 도서는 주문할 수 있으며 보통 영업일 기준 3일 안에 도착한다. 도착하면 문자로 안내한다.",
+    "새벽책방 카페에서는 아메리카노를 3,500원에 판매하며, 도서를 구매한 당일에는 음료를 1,000원 할인해 준다.",
+    "주차는 건물 뒤편 공영주차장을 이용할 수 있다. 3만원 이상 구매 시 1시간 무료 주차권을 제공한다.",
+    "새벽책방은 2015년 3월에 문을 열었으며, 대표는 전직 도서관 사서인 한지우 씨이다.",
+]
+doc_vecs = embed(docs)            # 문서는 한 번만 임베딩해서 저장해 둔다 (이것이 '벡터 DB'의 본질)
+
+def search(question, k=2):
+    scores = (embed([question]) @ doc_vecs.T)[0]
+    top = scores.topk(k)
+    return [(docs[i], s) for s, i in zip(top.values.tolist(), top.indices.tolist())]
+
+for q in ["책 읽다가 마음에 안 들면 돌려줄 수 있어?", "차 가져가도 돼?", "아이랑 같이 갈 만한 프로그램 있나요?"]:
+    print("Q:", q)
+    for d, s in search(q):
+        print(f"   {s:.3f}  {d[:50]}…")
+```
+
+질문에 "환불", "주차"라는 단어가 없어도 맞는 문서를 찾아냅니다.
+
+## RAG: 찾은 문서를 LLM에게 건네기
+
+```python
+from transformers import AutoModelForCausalLM
+
+llm_name = "Qwen/Qwen2.5-0.5B-Instruct"
+tok = AutoTokenizer.from_pretrained(llm_name)
+llm = AutoModelForCausalLM.from_pretrained(llm_name, dtype=torch.float32).to(device).eval()
+
+def generate(messages, max_new_tokens=100):
+    prompt = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    inputs = tok(prompt, return_tensors="pt").to(device)
+    with torch.no_grad():
+        out = llm.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
+    return tok.decode(out[0, inputs.input_ids.shape[1]:], skip_special_tokens=True)
+
+def rag(question, k=2):
+    context = "\n".join(f"- {d}" for d, _ in search(question, k))
+    system = "너는 새벽책방의 안내 직원이다. 아래 [참고 문서]에 있는 내용만 근거로 한국어로 짧게 답한다. 문서에 없는 내용은 '안내 문서에 없는 내용입니다'라고 답한다."
+    return generate([{"role": "system", "content": system},
+                     {"role": "user", "content": f"[참고 문서]\n{context}\n\n[질문]\n{question}"}])
+
+for q in ["세미나실 빌리려면 얼마야? 몇 명까지 돼?", "주말에는 몇 시에 닫아?", "사장님이 누구야?"]:
+    print("Q:", q)
+    print("  LLM만   :", generate([{"role": "user", "content": "새벽책방에 대한 질문이야. " + q}], 60).replace("\n", " "))
+    print("  RAG     :", rag(q).replace("\n", " "), "\n")
+```
+
+LLM만 쓰면 그럴듯하게 지어내고, RAG는 문서에 근거해 답합니다. **모델의 가중치는 1바이트도 바꾸지 않았습니다.**
+
+## 실제 서비스에서 추가되는 것들
+
+- **청킹(chunking):** 긴 문서는 몇백 토큰 단위로 잘라서 임베딩합니다. 너무 길면 의미가 뭉개지고, 너무 짧으면 문맥이 끊깁니다.
+- **벡터 DB:** 문서가 수백만 개면 전부와 내적할 수 없으므로 근사 최근접 탐색을 씁니다(FAISS, Chroma, pgvector 등). 원리는 위의 `doc_vecs @ query`와 같습니다.
+- **리랭킹(reranking):** 임베딩 검색으로 50개를 뽑은 뒤, 더 정밀한 모델로 다시 순위를 매깁니다.
+- **하이브리드 검색:** 고유명사·제품번호는 키워드 검색(BM25)이 더 정확해서 둘을 섞습니다.
+- **평가:** "검색이 맞는 문서를 가져왔는가"와 "답이 문서에 충실한가"를 따로 잽니다. RAG 실패의 대부분은 **검색 실패**입니다.
+
+## 핵심 정리
+
+- 임베딩 모델은 문장을 벡터로 바꾸고, 의미가 가까우면 코사인 유사도가 높습니다.
+- 의미 검색 = 문서 벡터를 미리 저장 → 질문 벡터와 내적 → 상위 k개.
+- RAG = 검색 결과를 프롬프트에 넣어 LLM이 **읽고 답하게** 하는 것.
+- 지식 추가는 RAG, 행동·형식 변경은 파인튜닝. 둘은 함께 쓸 수 있습니다.
+- RAG의 품질은 검색 품질이 좌우합니다. 답이 이상하면 검색된 문서부터 확인하세요.
+
+## 스스로 점검
+
+답을 머릿속으로 먼저 말해 본 뒤 펼쳐 보세요.
+
+<details><summary>Q1. 벡터를 정규화(길이 1)해 두면 왜 편한가요?</summary>
+
+코사인 유사도는 `a·b / (|a||b|)`인데 길이가 1이면 분모가 1이 되어 **내적 한 번**으로 끝납니다. 행렬곱 하나로 모든 문서와의 유사도를 구할 수 있습니다.
+
+</details>
+
+<details><summary>Q2. 회사 규정집 내용을 LLM이 답하게 하려 합니다. 파인튜닝보다 RAG가 나은 이유 세 가지는?</summary>
+
+① 규정이 바뀌면 문서만 교체하면 되고 재학습이 필요 없습니다. ② 답의 근거 문서를 함께 보여줄 수 있습니다. ③ 파인튜닝으로 사실을 정확히 외우게 하는 것은 어렵고 환각이 남지만, 프롬프트에 있는 글을 읽고 답하는 것은 LLM이 잘하는 일입니다.
+
+</details>
+
+<details><summary>Q3. RAG 챗봇이 틀린 답을 했습니다. 어디부터 확인하나요?</summary>
+
+검색된 문서를 먼저 출력해 봅니다. 맞는 문서가 검색되지 않았다면 검색(임베딩 모델, 청킹, k) 문제이고, 맞는 문서가 있는데도 틀렸다면 프롬프트나 LLM의 능력 문제입니다.
+
+</details>
+
+## 직접 고쳐보기
+
+1. `docs`를 내 자료(수업 노트, 동아리 규칙, 제품 FAQ 등) 10~30개로 바꿔 나만의 Q&A 봇을 만들어 보세요.
+2. "일요일에 몇 시까지 해?"라고 물어보세요. 문서에는 "주말"이라고만 적혀 있어 **일요일 = 주말**이라는 추론이 필요합니다. 검색은 맞는 문서를 가져오는데 답은 어떤가요? 작은 LLM의 읽기 능력 한계입니다. `llm_name`을 `Qwen/Qwen2.5-1.5B-Instruct`, `Qwen/Qwen2.5-3B-Instruct`로 키우며 비교해 보세요.
+2. `k`를 1, 2, 5로 바꿔 보세요. 많이 넣을수록 좋은가요? 0.5B 모델은 긴 문맥에서 어떻게 되나요?
+3. 문서에 없는 질문("새벽책방 와이파이 비밀번호 알려줘")을 해 보세요. 시스템 프롬프트의 지시를 지키나요? 이 질문의 검색 점수를 다른 질문들의 점수와 비교해 보세요. "점수가 낮으면 거절"하는 규칙으로 걸러낼 수 있을까요? 왜 어려울까요?
+4. 임베딩 모델을 훨씬 작은 `intfloat/multilingual-e5-small`로 바꿔 보세요. 이 모델은 평균 풀링(`(hidden * mask).sum(1) / mask.sum(1)`)을 쓰고 질문 앞에 `"query: "`, 문서 앞에 `"passage: "`를 붙이는 것이 약속입니다. 검색 결과가 어떻게 달라지나요? 임베딩 모델마다 사용법이 다르므로 **모델 카드를 꼭 읽어야** 합니다.
+5. (도전) 긴 글(위키백과 문서 하나)을 200자 단위로 겹치게 잘라(`text[i:i+200] for i in range(0, len(text), 150)`) 검색 대상으로 써 보세요.

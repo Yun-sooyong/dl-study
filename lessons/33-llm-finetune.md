@@ -1,8 +1,8 @@
-# 5. 진짜 LLM 파인튜닝 — Hugging Face와 LoRA
+# LLM 파인튜닝 — Hugging Face와 LoRA
 
-**목표:** 남이 수조 토큰으로 사전학습해 둔 LLM을 내려받아, **내 데이터로 말투를 바꿔** 봅니다. 레슨 4에서 만든 것과 같은 구조, 같은 학습 루프입니다.
+> ⏱ 60분 · T4 GPU 필요 (전체 실행 약 5분)
 
-> Colab에서 **T4 GPU**를 켜세요. 전체 실행에 5분 정도 걸립니다.
+**목표:** 남이 수조 토큰으로 사전학습해 둔 LLM을 내려받아, **내 데이터로 말투를 바꿔** 봅니다. [미니 GPT](#31-mini-gpt) 레슨에서 만든 것과 같은 구조, 같은 학습 루프입니다.
 
 ## 모델 불러오기
 
@@ -17,13 +17,13 @@ name = "Qwen/Qwen2.5-0.5B-Instruct"
 tok = AutoTokenizer.from_pretrained(name)
 model = AutoModelForCausalLM.from_pretrained(name, dtype=torch.float32).to(device)
 
-print(model)   # 레슨 4와 비교해 보세요: embed_tokens, 24개의 블록(self_attn + mlp), norm, lm_head
+print(model)   # 미니 GPT 레슨과 비교해 보세요: embed_tokens, 24개의 블록(self_attn + mlp), norm, lm_head
 print(f"파라미터 수: {sum(p.numel() for p in model.parameters()) / 1e6:.0f}M")
 ```
 
 ## 토크나이저와 채팅 템플릿
 
-글자 단위였던 레슨 4와 달리 서브워드 단위로 쪼갭니다. 그리고 Instruct 모델은 대화를 **정해진 형식의 텍스트**로 바꿔서 학습했기 때문에, 쓸 때도 같은 형식(`apply_chat_template`)을 맞춰줘야 합니다.
+글자 단위였던 [미니 GPT](#31-mini-gpt) 레슨과 달리 서브워드 단위로 쪼갭니다. 그리고 Instruct 모델은 대화를 **정해진 형식의 텍스트**로 바꿔서 학습했기 때문에, 쓸 때도 같은 형식(`apply_chat_template`)을 맞춰줘야 합니다.
 
 ```python
 ids = tok("딥러닝을 직접 학습시켜 봅시다").input_ids
@@ -47,11 +47,11 @@ for q in test_questions:
     print(f"Q: {q}\nA: {chat(model, q)}\n")
 ```
 
-`generate`가 하는 일은 레슨 4의 `generate`와 똑같습니다. 다음 토큰을 하나 뽑아 이어붙이고 반복합니다.
+`generate`가 하는 일은 [미니 GPT](#31-mini-gpt) 레슨의 `generate`와 똑같습니다. 다음 토큰을 하나 뽑아 이어붙이고 반복합니다.
 
 ## LoRA: 전체를 건드리지 않고 조금만 학습하기
 
-5억 개 파라미터를 전부 학습하려면 메모리가 많이 들고, 데이터가 적으면 모델이 망가지기도 쉽습니다. **LoRA**는 원래 가중치 `W`는 얼려두고(레슨 3의 freeze), 옆에 작은 행렬 두 개 `A`, `B`를 붙여 `W·x + B·A·x`를 계산합니다. 학습되는 건 `A`, `B`뿐입니다.
+5억 개 파라미터를 전부 학습하려면 메모리가 많이 들고, 데이터가 적으면 모델이 망가지기도 쉽습니다. **LoRA**는 원래 가중치 `W`는 얼려두고([CNN](#22-cnn) 레슨의 freeze), 옆에 작은 행렬 두 개 `A`, `B`를 붙여 `W·x + B·A·x`를 계산합니다. 학습되는 건 `A`, `B`뿐입니다.
 
 원리는 이게 전부입니다:
 
@@ -142,7 +142,7 @@ print("손실을 계산하는 부분:", tok.decode([t for t in ex["labels"] if t
 
 ## 학습 — 익숙한 그 루프
 
-`labels`를 같이 넘기면 Hugging Face 모델이 내부에서 "한 칸 밀기"(레슨 4의 x, y)와 cross entropy를 계산해 `loss`를 돌려줍니다.
+`labels`를 같이 넘기면 Hugging Face 모델이 내부에서 "한 칸 밀기"([미니 GPT](#31-mini-gpt) 레슨의 x, y)와 cross entropy를 계산해 `loss`를 돌려줍니다.
 
 ```python
 from torch.utils.data import DataLoader
@@ -187,6 +187,42 @@ loaded = PeftModel.from_pretrained(base, "cat-lora").eval()
 print(chat(loaded, "너는 누구야?"))
 # loaded.merge_and_unload() 를 쓰면 LoRA를 원래 가중치에 합쳐 일반 모델로 만들 수 있습니다
 ```
+
+## 핵심 정리
+
+- Hugging Face에서는 `from_pretrained(이름)` 한 줄로 모델과 토크나이저를 받습니다. 둘은 항상 짝입니다.
+- Instruct 모델은 **채팅 템플릿** 형식으로 입력해야 제 실력이 나옵니다. 학습 때와 추론 때 같은 템플릿을 쓰세요.
+- LoRA는 원래 가중치를 얼리고 작은 행렬 A, B만 학습합니다(전체의 1% 미만).
+- 질문 부분의 라벨을 `-100`으로 가려 **답 부분에서만** 손실을 계산합니다. 끝 토큰(EOS)도 학습시켜야 말을 멈출 줄 압니다.
+- 파인튜닝은 지식보다 **말투·형식·행동**을 바꾸는 데 잘 듣습니다.
+
+## 스스로 점검
+
+답을 머릿속으로 먼저 말해 본 뒤 펼쳐 보세요.
+
+<details><summary>Q1. LoRA에서 B를 0으로 초기화하는 이유는?</summary>
+
+`B·A = 0`이 되어 학습 시작 시점의 모델이 원래 모델과 정확히 같아집니다. 멀쩡한 모델에서 출발해 조금씩 바꿔 나가기 위해서입니다.
+
+</details>
+
+<details><summary>Q2. 학습 데이터에 없던 질문에도 '냥' 말투가 나오는 이유는?</summary>
+
+모델이 개별 답을 외운 것이 아니라 '문장을 ~냥으로 끝낸다'는 패턴을 배웠기 때문입니다. 질문에 대한 지식 자체는 사전학습에서 이미 갖고 있습니다.
+
+</details>
+
+<details><summary>Q3. 답 끝에 <code>eos_token</code>을 붙이지 않고 학습하면?</summary>
+
+모델이 '언제 멈추는지'를 배우지 못해, 답을 끝낸 뒤에도 `max_new_tokens`까지 계속 말을 이어갑니다.
+
+</details>
+
+<details><summary>Q4. 20개 데이터로 에폭을 아주 많이 돌리면 어떤 위험이 있나요?</summary>
+
+과적합입니다. 학습 데이터의 답을 그대로 외우고, 다른 질문에도 외운 문장을 내뱉거나 원래 능력이 망가질 수 있습니다.
+
+</details>
 
 ## 직접 고쳐보기
 
