@@ -1,0 +1,103 @@
+# 2. 첫 신경망 — 손글씨 숫자 분류기 (MLP)
+
+**목표:** 진짜 데이터셋으로 신경망을 처음부터 끝까지 학습시킵니다. 여기서 만드는 **학습 루프**는 LLM 학습에서도 거의 그대로 쓰입니다.
+
+## 데이터: MNIST
+
+28×28 흑백 손글씨 숫자 이미지 7만 장. `Dataset`은 "i번째 샘플을 돌려주는 것", `DataLoader`는 "그걸 배치로 묶고 섞어주는 것"입니다.
+
+```python
+import torch
+from torch import nn
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+print("device:", device)
+
+tf = transforms.ToTensor()   # 이미지를 0~1 사이 텐서로
+train_ds = datasets.MNIST("data", train=True, download=True, transform=tf)
+test_ds = datasets.MNIST("data", train=False, download=True, transform=tf)
+train_dl = DataLoader(train_ds, batch_size=64, shuffle=True)
+test_dl = DataLoader(test_ds, batch_size=256)
+
+x, y = next(iter(train_dl))
+print(x.shape, y.shape)   # [64, 1, 28, 28] 이미지 64장, [64] 정답 라벨 64개
+```
+
+## 모델: `nn.Module`로 직접 정의하기
+
+모델은 `__init__`에서 **층을 선언**하고, `forward`에서 **데이터가 흐르는 순서**를 적습니다. 모델을 수정한다는 건 결국 이 두 곳을 고치는 일입니다.
+
+```python
+class MLP(nn.Module):
+    def __init__(self, hidden=128):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Flatten(),              # [B,1,28,28] → [B,784]
+            nn.Linear(784, hidden),
+            nn.ReLU(),                 # 비선형 함수. 이게 없으면 층을 쌓아도 직선 하나와 같음
+            nn.Linear(hidden, 10),     # 숫자 0~9 각각의 점수(logit)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+model = MLP().to(device)
+print(model)
+print("파라미터 수:", sum(p.numel() for p in model.parameters()))
+```
+
+## 학습 루프와 평가
+
+```python
+def evaluate(model, dl):
+    model.eval()                         # 평가 모드 (dropout 등이 꺼짐)
+    correct = 0
+    with torch.no_grad():                # 평가 땐 기울기 계산 불필요 → 빠르고 메모리 절약
+        for x, y in dl:
+            x, y = x.to(device), y.to(device)
+            correct += (model(x).argmax(dim=1) == y).sum().item()
+    return correct / len(dl.dataset)
+
+def train(model, epochs=3, lr=1e-3):
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    loss_fn = nn.CrossEntropyLoss()      # 분류 문제의 표준 손실
+    for epoch in range(epochs):
+        model.train()
+        for x, y in train_dl:
+            x, y = x.to(device), y.to(device)   # 데이터도 모델과 같은 장치로
+            loss = loss_fn(model(x), y)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        print(f"epoch {epoch+1}  마지막 배치 loss {loss.item():.4f}  테스트 정확도 {evaluate(model, test_dl):.4f}")
+
+print("학습 전 정확도:", evaluate(model, test_dl))   # 약 0.1 (찍는 수준)
+train(model)
+```
+
+3 에폭이면 97% 안팎이 나옵니다. 방금 신경망을 하나 학습시켰습니다.
+
+## 모델이 틀린 것 들여다보기
+
+```python
+import matplotlib.pyplot as plt
+
+x, y = next(iter(test_dl))
+pred = model(x.to(device)).argmax(dim=1).cpu()
+wrong = (pred != y).nonzero().flatten()[:8]
+fig, axes = plt.subplots(1, max(len(wrong), 1), figsize=(2 * max(len(wrong), 1), 2.5), squeeze=False)
+for ax, i in zip(axes[0], wrong):
+    ax.imshow(x[i, 0], cmap="gray"); ax.axis("off")
+    ax.set_title(f"pred {pred[i].item()} / true {y[i].item()}")
+plt.show()
+```
+
+## 직접 고쳐보기
+
+1. `MLP(hidden=16)`과 `MLP(hidden=512)`를 각각 학습시켜 정확도와 파라미터 수를 비교하세요.
+2. `nn.ReLU()`를 지우고 학습시켜 보세요. 정확도가 어떻게 되나요? 왜일까요?
+3. 은닉층을 하나 더 추가해 보세요 (`Linear → ReLU → Linear → ReLU → Linear`). shape이 맞도록 숫자를 직접 맞춰야 합니다.
+4. `lr=1e-1`, `lr=1e-5`로 바꿔보세요.
+5. (도전) 학습 루프에서 100 스텝마다 loss를 리스트에 모아 `plt.plot`으로 그려보세요. 앞으로 계속 보게 될 **loss 곡선**입니다.

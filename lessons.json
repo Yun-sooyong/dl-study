@@ -1,0 +1,42 @@
+[
+ {
+  "id": "00-start",
+  "title": "0. 시작하기 — 로드맵과 실습 환경",
+  "code": false
+ },
+ {
+  "id": "01-tensor-autograd",
+  "title": "1. 텐서와 자동미분 — 학습이란 무엇인가",
+  "code": true
+ },
+ {
+  "id": "02-mlp-mnist",
+  "title": "2. 첫 신경망 — 손글씨 숫자 분류기 (MLP)",
+  "code": true
+ },
+ {
+  "id": "03-cnn",
+  "title": "3. 모델 구조 바꾸기 — CNN, 저장과 불러오기",
+  "code": true
+ },
+ {
+  "id": "04-mini-gpt",
+  "title": "4. 나만의 미니 GPT — LLM을 밑바닥부터",
+  "code": true
+ },
+ {
+  "id": "05-llm-finetune",
+  "title": "5. 진짜 LLM 파인튜닝 — Hugging Face와 LoRA",
+  "code": true
+ },
+ {
+  "id": "06-mini-vlm",
+  "title": "6. 나만의 미니 VLM — 눈과 뇌를 이어붙이기",
+  "code": true
+ },
+ {
+  "id": "07-vlm-finetune",
+  "title": "7. 진짜 VLM 파인튜닝",
+  "code": true
+ }
+]
