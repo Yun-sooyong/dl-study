@@ -5,7 +5,7 @@ import re
 
 SITE = "https://yun-sooyong.github.io/dl-study/"
 PARTS = {  # 파일명 첫 글자 -> 파트 이름
-    "0": "시작",
+    "0": "0부 · 시작하기",
     "1": "1부 · 머신러닝 기초",
     "2": "2부 · 딥러닝 기초",
     "3": "3부 · LLM",

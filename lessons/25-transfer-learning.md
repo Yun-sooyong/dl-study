@@ -49,7 +49,7 @@ print([name for name, _ in resnet.named_children()])   # conv1, bn1, ..., layer1
 print(resnet.fc)                                        # Linear(512 → 1000): ImageNet의 1000개 클래스용 머리
 ```
 
-몸통(`conv1` ~ `layer4`)은 이미지를 512차원 특징 벡터로 바꾸고, 머리(`fc`)가 그것을 1000개 클래스로 분류합니다. 우리 클래스는 10개이므로 **머리를 새것으로 갈아 끼웁니다.** [CNN 레슨](#22-cnn)에서 해 본 "모델 수정"입니다.
+몸통(`conv1` ~ `layer4`)은 이미지를 512차원 특징 벡터로 바꾸고, 머리(`fc`)가 그것을 1000개 클래스로 분류합니다. 우리 클래스는 10개이므로 **머리를 새것으로 갈아 끼웁니다.** [CNN 레슨](#23-cnn)에서 해 본 "모델 수정"입니다.
 
 ```python
 def make_model(pretrained, freeze_body):
@@ -178,4 +178,4 @@ print([g["lr"] for g in optimizer.param_groups])
 2. ③의 학습률을 `1e-2`로 올려 보세요. Q3의 예상이 맞나요?
 3. `layer4`만 풀고 나머지는 얼려 보세요: 얼린 뒤 `for p in model.layer4.parameters(): p.requires_grad = True`.
 4. `models.resnet50(weights="IMAGENET1K_V2")`나 `models.efficientnet_b0(weights="IMAGENET1K_V1")`로 바꿔 보세요. 머리의 이름이 모델마다 다릅니다(`fc`, `classifier`). `print(model)`로 확인하세요.
-5. (도전) [학습 잘 시키는 법](#23-training-recipes)의 데이터 증강과 스케줄러를 ③에 적용해 정확도를 더 올려 보세요.
+5. (도전) [학습 잘 시키는 법](#24-training-recipes)의 데이터 증강과 스케줄러를 ③에 적용해 정확도를 더 올려 보세요.

@@ -2,7 +2,7 @@
 
 > ⏱ 60분 · T4 GPU 필요 (약 10분)
 
-**목표:** 제대로 사전학습된 VLM을 불러와 써 보고, LoRA로 **내가 원하는 출력 형식**에 맞게 파인튜닝합니다. [LLM 파인튜닝](#33-llm-finetune) 레슨(LoRA)와 [미니 VLM](#41-mini-vlm) 레슨(VLM 구조)의 합체입니다.
+**목표:** 제대로 사전학습된 VLM을 불러와 써 보고, LoRA로 **내가 원하는 출력 형식**에 맞게 파인튜닝합니다. [LLM 파인튜닝](#34-llm-finetune) 레슨(LoRA)와 [미니 VLM](#41-mini-vlm) 레슨(VLM 구조)의 합체입니다.
 
 ## 모델 불러오기: SmolVLM-256M
 
@@ -98,7 +98,7 @@ model.print_trainable_parameters()
 
 ## 배치 만들기
 
-[LLM 파인튜닝](#33-llm-finetune) 레슨과 같습니다. `프롬프트 + 정답`을 통째로 넣고, 프롬프트(이미지 토큰 포함) 부분은 라벨을 `-100`으로 가립니다. 이미지 분할을 꺼 두었기 때문에 프롬프트 길이가 모든 샘플에서 같아 마스킹이 간단합니다.
+[LLM 파인튜닝](#34-llm-finetune) 레슨과 같습니다. `프롬프트 + 정답`을 통째로 넣고, 프롬프트(이미지 토큰 포함) 부분은 라벨을 `-100`으로 가립니다. 이미지 분할을 꺼 두었기 때문에 프롬프트 길이가 모든 샘플에서 같아 마스킹이 간단합니다.
 
 ```python
 prompt = make_prompt(QUESTION)
@@ -128,7 +128,7 @@ print("손실을 계산하는 부분:", processor.decode(b["labels"][0][b["label
 - `f"{prompt} {r['caption_0']}{end}"` — 프롬프트 + 정답 + 종료 표시. `end = "<end_of_utterance>"`는 이 모델이 "발화 끝"으로 학습한 특수 토큰(`tokenizer.eos_token`과 같음). 모델마다 다르므로 `processor.tokenizer.eos_token`으로 확인하는 습관이 좋습니다.
 - `images=[[img], ...]` — 샘플마다 이미지 **리스트**(한 발화에 이미지가 여러 장일 수 있어서). 그래서 이중 리스트입니다.
 - `padding=True` — 배치 안에서 가장 긴 샘플에 맞춰 패딩. `attention_mask`에 0으로 표시됩니다.
-- `labels = input_ids.clone()` → 앞 `prompt_len`은 `-100`, 패딩 위치도 `-100` — [LLM 파인튜닝](#33-llm-finetune)의 라벨 마스킹과 같습니다. `clone()`을 안 하면 `input_ids`까지 `-100`으로 바뀌어 모델 입력이 망가집니다.
+- `labels = input_ids.clone()` → 앞 `prompt_len`은 `-100`, 패딩 위치도 `-100` — [LLM 파인튜닝](#34-llm-finetune)의 라벨 마스킹과 같습니다. `clone()`을 안 하면 `input_ids`까지 `-100`으로 바뀌어 모델 입력이 망가집니다.
 - 마지막 `print` — 라벨 중 `-100`이 아닌 것만 디코딩해 "정말 캡션 부분만 남았는지" 눈으로 확인. 앞에 `Assistant:`가 남아 있거나 캡션이 잘려 있으면 `prompt_len` 계산이 틀린 것입니다.
 ## 학습
 

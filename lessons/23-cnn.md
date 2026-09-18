@@ -86,7 +86,7 @@ train(cnn)                                                        # 그런데 �
 
 **코드 읽기**
 
-- `self.features`와 `self.classifier`로 **두 덩어리**로 나눈 이유: 앞부분은 "이미지에서 특징 뽑기", 뒷부분은 "특징으로 분류하기"라는 역할이 다릅니다. 이렇게 나눠 두면 아래에서 `features`만 얼리거나, [전이학습](#24-transfer-learning)에서 `classifier`만 갈아 끼우는 일이 한 줄로 됩니다. 실제 모델들(ResNet의 `fc`, VLM의 `vision_model`/`text_model`)도 같은 이유로 부품을 나눠 이름을 붙입니다.
+- `self.features`와 `self.classifier`로 **두 덩어리**로 나눈 이유: 앞부분은 "이미지에서 특징 뽑기", 뒷부분은 "특징으로 분류하기"라는 역할이 다릅니다. 이렇게 나눠 두면 아래에서 `features`만 얼리거나, [전이학습](#25-transfer-learning)에서 `classifier`만 갈아 끼우는 일이 한 줄로 됩니다. 실제 모델들(ResNet의 `fc`, VLM의 `vision_model`/`text_model`)도 같은 이유로 부품을 나눠 이름을 붙입니다.
 - `nn.Sequential(nn.Conv2d, nn.ReLU, nn.MaxPool2d, ...)` — "합성곱 → 활성화 → 풀링"이 CNN의 기본 블록입니다. ReLU가 Conv 뒤에 오는 이유는 MLP와 같습니다(비선형성이 없으면 Conv를 아무리 쌓아도 하나의 Conv와 같음).
 - `nn.Linear(32 * 7 * 7, 10)` — 위에서 확인한 1568을 곱셈 식으로 적어 두면, 나중에 채널이나 크기를 바꿀 때 어디를 고쳐야 하는지 보입니다.
 - 왜 `train`, `evaluate` 함수를 **그대로** 쓰나: 학습 루프는 모델 구조를 전혀 모릅니다. `model(x)`가 `[배치, 10]`을 돌려주기만 하면 됩니다. 모델을 갈아 끼우는 실험이 쉬운 이유이고, 이 레슨의 제목이 "모델 구조 바꾸기"인 이유입니다.
@@ -130,7 +130,7 @@ train(cnn2, epochs=1)
 - `p.requires_grad = False` — 이 파라미터에 대해서는 기울기를 계산하지 말라는 뜻. `backward()`가 이들을 건너뛰고, 옵티마이저도 `.grad`가 없으므로 갱신하지 않습니다. 메모리와 시간이 줄고, 이미 잘 학습된 부분이 망가지지 않습니다.
 - `cnn2.features.parameters()` — 위에서 부품을 나눠 둔 덕분에 특징 추출부만 골라 얼릴 수 있습니다.
 - `cnn2.classifier[1].reset_parameters()` — `classifier`는 `Sequential(Flatten, Linear)`이므로 `[1]`이 `Linear`. `reset_parameters()`는 그 층의 가중치를 초기 난수로 되돌립니다. "몸통은 그대로, 머리만 새로"라는 전이학습의 최소 형태를 흉내 낸 것입니다.
-- 학습되는 파라미터 15,690개 = `Linear(1568, 10)`의 `1568 × 10 + 10`. 나머지 4,800개(Conv 두 층)는 얼어 있습니다. 1 에폭만에 97.9%가 나오는 것은 얼린 특징이 이미 좋기 때문입니다. 이 실험이 [전이학습](#24-transfer-learning)과 [LLM 파인튜닝](#33-llm-finetune)의 예고편입니다.
+- 학습되는 파라미터 15,690개 = `Linear(1568, 10)`의 `1568 × 10 + 10`. 나머지 4,800개(Conv 두 층)는 얼어 있습니다. 1 에폭만에 97.9%가 나오는 것은 얼린 특징이 이미 좋기 때문입니다. 이 실험이 [전이학습](#25-transfer-learning)과 [LLM 파인튜닝](#34-llm-finetune)의 예고편입니다.
 ## 핵심 정리
 
 - 학습 루프는 그대로 두고 **모델 클래스만 바꾸면** 다른 구조를 실험할 수 있습니다.

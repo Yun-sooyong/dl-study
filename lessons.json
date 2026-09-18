@@ -2,8 +2,20 @@
  {
   "id": "00-start",
   "title": "시작하기 — 로드맵과 학습 방법",
-  "part": "시작",
+  "part": "0부 · 시작하기",
   "code": false
+ },
+ {
+  "id": "01-setup",
+  "title": "실습 환경 만들기 — Colab과 내 컴퓨터",
+  "part": "0부 · 시작하기",
+  "code": true
+ },
+ {
+  "id": "02-math-minimum",
+  "title": "필요한 수학 — 딱 필요한 만큼만",
+  "part": "0부 · 시작하기",
+  "code": true
  },
  {
   "id": "10-ml-first-model",
@@ -36,19 +48,25 @@
   "code": true
  },
  {
-  "id": "22-cnn",
+  "id": "22-backprop-from-scratch",
+  "title": "역전파 직접 구현 — 자동미분 없이 신경망 학습시키기",
+  "part": "2부 · 딥러닝 기초",
+  "code": true
+ },
+ {
+  "id": "23-cnn",
   "title": "모델 구조 바꾸기 — CNN, 저장과 불러오기",
   "part": "2부 · 딥러닝 기초",
   "code": true
  },
  {
-  "id": "23-training-recipes",
+  "id": "24-training-recipes",
   "title": "학습 잘 시키는 법 — loss 곡선, 정규화, 스케줄러, 디버깅",
   "part": "2부 · 딥러닝 기초",
   "code": true
  },
  {
-  "id": "24-transfer-learning",
+  "id": "25-transfer-learning",
   "title": "전이학습 — 남이 학습시킨 모델 위에서 시작하기",
   "part": "2부 · 딥러닝 기초",
   "code": true
@@ -66,25 +84,25 @@
   "code": true
  },
  {
-  "id": "32-llm-inference",
+  "id": "33-llm-inference",
   "title": "사전학습 LLM 다루기 — 생성, 샘플링, 프롬프트",
   "part": "3부 · LLM",
   "code": true
  },
  {
-  "id": "33-llm-finetune",
+  "id": "34-llm-finetune",
   "title": "LLM 파인튜닝 — Hugging Face와 LoRA",
   "part": "3부 · LLM",
   "code": true
  },
  {
-  "id": "34-embeddings-rag",
+  "id": "35-embeddings-rag",
   "title": "임베딩과 RAG — 모델이 모르는 것을 알려주기",
   "part": "3부 · LLM",
   "code": true
  },
  {
-  "id": "35-dpo",
+  "id": "36-dpo",
   "title": "선호 학습 (DPO) — \"이 답이 저 답보다 낫다\"로 학습하기",
   "part": "3부 · LLM",
   "code": true

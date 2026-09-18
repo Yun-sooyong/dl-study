@@ -15,15 +15,15 @@
 | | [표 데이터와 트리](#12-ml-tabular-trees) | 회귀, 기준선, 랜덤 포레스트, 부스팅 |
 | **2부 딥러닝 기초** | [텐서와 자동미분](#20-tensor-autograd) | 경사하강법 — 학습의 본질 |
 | | [첫 신경망](#21-mlp-mnist) | `nn.Module`, DataLoader, **학습 루프** |
-| | [CNN](#22-cnn) | 모델 구조 **수정**하기, 저장/불러오기, freeze |
-| | [학습 잘 시키는 법](#23-training-recipes) | loss 곡선 읽기, 정규화, 스케줄러, 디버깅 |
-| | [전이학습](#24-transfer-learning) | 사전학습 모델을 내 데이터에 맞추기 |
+| | [CNN](#23-cnn) | 모델 구조 **수정**하기, 저장/불러오기, freeze |
+| | [학습 잘 시키는 법](#24-training-recipes) | loss 곡선 읽기, 정규화, 스케줄러, 디버깅 |
+| | [전이학습](#25-transfer-learning) | 사전학습 모델을 내 데이터에 맞추기 |
 | **3부 LLM** | [토크나이저](#30-tokenizer) | BPE를 직접 구현, 토큰이 중요한 이유 |
 | | [미니 GPT](#31-mini-gpt) | 트랜스포머를 **밑바닥부터** 만들어 사전학습 |
-| | [LLM 다루기](#32-llm-inference) | 생성 루프, 샘플링, KV 캐시, 프롬프트 |
-| | [LLM 파인튜닝](#33-llm-finetune) | Hugging Face, LoRA로 **내 데이터** 학습 (SFT) |
-| | [임베딩과 RAG](#34-embeddings-rag) | 의미 검색, 모델이 모르는 지식 넣어주기 |
-| | [선호 학습 DPO](#35-dpo) | "이 답이 더 낫다"로 학습하기 |
+| | [LLM 다루기](#33-llm-inference) | 생성 루프, 샘플링, KV 캐시, 프롬프트 |
+| | [LLM 파인튜닝](#34-llm-finetune) | Hugging Face, LoRA로 **내 데이터** 학습 (SFT) |
+| | [임베딩과 RAG](#35-embeddings-rag) | 의미 검색, 모델이 모르는 지식 넣어주기 |
+| | [선호 학습 DPO](#36-dpo) | "이 답이 더 낫다"로 학습하기 |
 | **4부 VLM** | [CLIP](#40-clip) | 이미지와 글을 같은 공간에, 제로샷 분류 |
 | | [미니 VLM](#41-mini-vlm) | 이미지 인코더 + LLM을 **이어붙여** 학습 |
 | | [VLM 파인튜닝](#42-vlm-finetune) | 실제 VLM을 LoRA로 학습 |

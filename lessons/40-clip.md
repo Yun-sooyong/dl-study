@@ -13,7 +13,7 @@
 "도시의 야경"       → [텍스트 인코더] → ○        멀게
 ```
 
-그 결과 이미지와 글이 **같은 벡터 공간**에 놓입니다. [임베딩과 RAG](#34-embeddings-rag)에서 문장끼리 했던 일을 이미지와 문장 사이에서 하는 것입니다.
+그 결과 이미지와 글이 **같은 벡터 공간**에 놓입니다. [임베딩과 RAG](#35-embeddings-rag)에서 문장끼리 했던 일을 이미지와 문장 사이에서 하는 것입니다.
 
 ```python
 import torch
@@ -51,15 +51,15 @@ print(embed_images([ds[0]["image"]]).shape, embed_texts(["a dog"]).shape)     # 
 **코드 읽기**
 
 - `CLIPModel.from_pretrained("openai/clip-vit-base-patch32")` — 이미지 인코더(ViT-B/32)와 텍스트 인코더를 **둘 다** 담은 모델. "B/32"는 Base 크기, 32×32 픽셀 패치라는 뜻. 가장 작고 빠른 CLIP이라 실습에 적합하며, [미니 VLM](#41-mini-vlm)에서 이 모델의 이미지 인코더 부분만 다시 씁니다.
-- `CLIPProcessor` — 이미지 전처리기(224로 리사이즈, CLIP 전용 평균·표준편차로 정규화)와 토크나이저를 묶은 것. `processor(images=...)`와 `processor(text=...)`로 각각 씁니다. [전이학습](#24-transfer-learning)의 `transforms.Normalize`를 모델 카드에 맞게 미리 설정해 둔 셈입니다.
+- `CLIPProcessor` — 이미지 전처리기(224로 리사이즈, CLIP 전용 평균·표준편차로 정규화)와 토크나이저를 묶은 것. `processor(images=...)`와 `processor(text=...)`로 각각 씁니다. [전이학습](#25-transfer-learning)의 `transforms.Normalize`를 모델 카드에 맞게 미리 설정해 둔 셈입니다.
 - `load_dataset("jxie/flickr8k", split="test[:200]")` — Hugging Face `datasets`로 사진+캡션 데이터를 받습니다. `split="test[:200]"`처럼 문자열로 일부만 지정할 수 있습니다. 200장이면 검색 실험에 충분하고 임베딩도 몇 초면 끝납니다.
 - `clip.vision_model(pixel_values=...).pooler_output` — 이미지 인코더의 요약 벡터(768차원, ViT의 CLS 토큰). `clip.visual_projection`이 이것을 텍스트와 공유하는 512차원 공간으로 투영합니다. 텍스트 쪽도 `text_model` → `text_projection`으로 대칭입니다. 두 인코더의 출력 차원이 다르므로(768 vs 512) 투영층이 **같은 공간으로 맞추는** 역할을 합니다.
 - 왜 `get_image_features` 같은 한 줄짜리 편의 함수 대신 두 단계로 부르나: 안에서 어떤 부품이 어떤 순서로 쓰이는지 보이기 위해서입니다. 편의 함수는 정확히 이 두 줄을 감싼 것입니다.
 - `im.convert("RGB")` — Flickr 사진 중 일부는 흑백(1채널)이라 그대로 넣으면 채널 수가 안 맞아 에러가 납니다. 이미지 데이터를 다룰 때 습관처럼 붙이는 변환입니다.
-- `F.normalize(..., dim=-1)` — 길이 1로 맞춰 내적 = 코사인 유사도. [임베딩과 RAG](#34-embeddings-rag)와 같은 이유입니다.
+- `F.normalize(..., dim=-1)` — 길이 1로 맞춰 내적 = 코사인 유사도. [임베딩과 RAG](#35-embeddings-rag)와 같은 이유입니다.
 ## 제로샷 분류: 학습 없이 분류기 만들기
 
-[전이학습](#24-transfer-learning)에서는 새 클래스를 분류하려면 머리를 새로 학습해야 했습니다. CLIP은 **클래스 이름을 글로 써 주기만** 하면 됩니다. 이미지 벡터와 가장 가까운 문장이 답입니다.
+[전이학습](#25-transfer-learning)에서는 새 클래스를 분류하려면 머리를 새로 학습해야 했습니다. CLIP은 **클래스 이름을 글로 써 주기만** 하면 됩니다. 이미지 벡터와 가장 가까운 문장이 답입니다.
 
 ```python
 labels = ["dog", "person", "bicycle", "car", "cat", "horse"]
@@ -81,8 +81,8 @@ plt.show()
 - `[f"a photo of a {l}" for l in labels]` — 클래스 이름을 문장 틀에 넣습니다. CLIP은 "단어"가 아니라 "설명 문장"과 이미지를 짝지어 학습했으므로, 문장 형태가 학습 분포에 가깝습니다(스스로 점검 Q1).
 - `text_vecs`를 루프 **밖에서** 한 번만 계산 — 클래스 문장은 이미지가 바뀌어도 같으므로 미리 계산합니다. 분류할 이미지가 만 장이어도 텍스트 인코더는 6번만 돌면 됩니다.
 - `embed_images([...]) @ text_vecs.T` — 이미지 1장과 클래스 6개의 유사도 `[1, 6]`. 분류기의 "로짓"에 해당합니다.
-- `(100 * sims).softmax(dim=-1)` — 코사인 유사도는 −1~1 범위라 그대로 softmax하면 확률이 거의 균등합니다. CLIP은 학습 때 유사도에 100 근처의 값(`logit_scale`)을 곱했으므로, 같은 값을 곱해야 학습 때와 같은 확신 수준의 확률이 나옵니다. [LLM 다루기](#32-llm-inference)의 temperature와 같은 역할입니다(100 = 1/0.01).
-- 이 코드에는 `fit`도 `backward`도 없습니다. **분류기를 학습시키지 않았는데 분류가 됩니다.** [전이학습](#24-transfer-learning)에서 머리를 새로 학습해야 했던 것과 대조해 보세요.
+- `(100 * sims).softmax(dim=-1)` — 코사인 유사도는 −1~1 범위라 그대로 softmax하면 확률이 거의 균등합니다. CLIP은 학습 때 유사도에 100 근처의 값(`logit_scale`)을 곱했으므로, 같은 값을 곱해야 학습 때와 같은 확신 수준의 확률이 나옵니다. [LLM 다루기](#33-llm-inference)의 temperature와 같은 역할입니다(100 = 1/0.01).
+- 이 코드에는 `fit`도 `backward`도 없습니다. **분류기를 학습시키지 않았는데 분류가 됩니다.** [전이학습](#25-transfer-learning)에서 머리를 새로 학습해야 했던 것과 대조해 보세요.
 
 ## 글로 사진 찾기
 

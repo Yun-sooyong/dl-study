@@ -59,7 +59,7 @@ for q in test_questions:
 
 ## LoRA: 전체를 건드리지 않고 조금만 학습하기
 
-5억 개 파라미터를 전부 학습하려면 메모리가 많이 들고, 데이터가 적으면 모델이 망가지기도 쉽습니다. **LoRA**는 원래 가중치 `W`는 얼려두고([CNN](#22-cnn) 레슨의 freeze), 옆에 작은 행렬 두 개 `A`, `B`를 붙여 `W·x + B·A·x`를 계산합니다. 학습되는 건 `A`, `B`뿐입니다.
+5억 개 파라미터를 전부 학습하려면 메모리가 많이 들고, 데이터가 적으면 모델이 망가지기도 쉽습니다. **LoRA**는 원래 가중치 `W`는 얼려두고([CNN](#23-cnn) 레슨의 freeze), 옆에 작은 행렬 두 개 `A`, `B`를 붙여 `W·x + B·A·x`를 계산합니다. 학습되는 건 `A`, `B`뿐입니다.
 
 원리는 이게 전부입니다:
 
@@ -199,7 +199,7 @@ for epoch in range(epochs):
 **코드 읽기**
 
 - `DataLoader([...], batch_size=4, shuffle=True, collate_fn=collate)` — 파이썬 리스트도 `Dataset`처럼 쓸 수 있습니다(`len`과 인덱싱만 되면 됨). `collate_fn`에 위의 함수를 넘겨 패딩을 맡깁니다. 배치 4는 작지만 데이터가 20개뿐이라 이 정도면 에폭당 5스텝입니다.
-- `[p for p in model.parameters() if p.requires_grad]` — LoRA 파라미터만 옵티마이저에 넘깁니다. [전이학습](#24-transfer-learning)과 같은 이유입니다.
+- `[p for p in model.parameters() if p.requires_grad]` — LoRA 파라미터만 옵티마이저에 넘깁니다. [전이학습](#25-transfer-learning)과 같은 이유입니다.
 - `lr=2e-4` — LoRA 파인튜닝의 관례적 학습률. 전체 파인튜닝(1e-5 근처)보다 10배쯤 큽니다. LoRA 파라미터는 0에서 출발하는 작은 행렬이라 크게 움직여도 원래 모델이 망가지지 않기 때문입니다.
 - `model(**batch).loss` — `labels`를 함께 넘기면 Hugging Face 모델이 내부에서 로짓을 한 칸 밀어 정답과 맞추고 cross entropy까지 계산해 `.loss`로 돌려줍니다. [미니 GPT](#31-mini-gpt)의 `forward(idx, targets)`가 하던 일입니다.
 - 나머지 네 줄은 [텐서와 자동미분](#20-tensor-autograd)부터 이어져 온 그 루프입니다. 5억 파라미터 LLM도 학습 루프는 직선 맞추기와 같습니다.

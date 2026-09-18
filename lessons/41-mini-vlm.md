@@ -100,12 +100,12 @@ print("학습할 파라미터:", sum(p.numel() for p in projector.parameters()))
 **코드 읽기**
 
 - `llm.get_input_embeddings()` — LLM의 토큰 임베딩 표(`nn.Embedding(151936, 896)`)를 꺼냅니다. 보통은 `input_ids`를 넣으면 모델 안에서 자동으로 이 표를 거치지만, 우리는 **이 표를 직접 불러** 텍스트를 벡터로 바꾼 뒤 이미지 벡터와 이어 붙여야 합니다. 그래서 따로 손에 쥡니다.
-- `for p in llm.parameters(): p.requires_grad = False` — LLM 전체를 얼림. [CNN](#22-cnn) 레슨의 freeze와 같습니다. `.eval()`도 함께 둡니다(dropout 등이 있으면 꺼지도록).
+- `for p in llm.parameters(): p.requires_grad = False` — LLM 전체를 얼림. [CNN](#23-cnn) 레슨의 freeze와 같습니다. `.eval()`도 함께 둡니다(dropout 등이 있으면 꺼지도록).
 - `nn.Sequential(Linear(768, 896), GELU(), Linear(896, 896))` — 2층 MLP 프로젝터. 왜 이 모양인가: LLaVA 1.5가 "Linear 하나보다 2층 MLP가 낫다"고 보고한 구조를 그대로 따랐습니다. 입력 768은 CLIP 패치 벡터의 차원, 출력 896은 Qwen 임베딩의 차원입니다. `vit.config.hidden_size`, `llm.config.hidden_size`에서 읽어 오므로 모델을 바꿔도 숫자를 고칠 필요가 없습니다.
 - 학습할 파라미터 약 150만 개 — LLM(4.9억) + ViT(0.9억)의 0.3%도 안 됩니다. 이 작은 부품만으로 LLM이 이미지를 "읽게" 되는 것이 이 레슨의 요점입니다.
 ## 입력 조립: 텍스트 임베딩 사이에 이미지 끼워 넣기
 
-채팅 형식의 프롬프트에서 `<image>` 자리를 기준으로 앞뒤를 나누고, 그 사이에 이미지 토큰을 넣습니다. 이번엔 토큰 번호(`input_ids`) 대신 **임베딩을 직접**(`inputs_embeds`) LLM에 넣는다는 점이 [LLM 파인튜닝](#33-llm-finetune) 레슨과 다릅니다.
+채팅 형식의 프롬프트에서 `<image>` 자리를 기준으로 앞뒤를 나누고, 그 사이에 이미지 토큰을 넣습니다. 이번엔 토큰 번호(`input_ids`) 대신 **임베딩을 직접**(`inputs_embeds`) LLM에 넣는다는 점이 [LLM 파인튜닝](#34-llm-finetune) 레슨과 다릅니다.
 
 ```python
 prompt = tok.apply_chat_template([{"role": "user", "content": "<image>\nDescribe this image."}],
@@ -136,11 +136,11 @@ print(e.shape, m.shape, l.shape)
 
 - `prompt.split("<image>")` — 채팅 템플릿으로 만든 프롬프트 문자열을 `<image>` 자리에서 앞(`pre`: 시스템 프롬프트 + `<|im_start|>user\n`)과 뒤(`post`: `\nDescribe this image.<|im_end|>\n<|im_start|>assistant\n`)로 나눕니다. `<image>`는 특수 토큰이 아니라 그냥 우리가 정한 표시 문자열이고, 그 자리에 이미지 벡터가 들어갑니다.
 - `pre_ids`, `post_ids`는 모든 샘플에 **똑같으므로** 함수 밖에서 한 번만 토큰화합니다.
-- `seqs` — 캡션마다 토큰화하고 끝에 `eos_token`을 붙입니다([LLM 파인튜닝](#33-llm-finetune)과 같은 이유: 멈추는 법도 배워야 함). 길이가 제각각이라 `n = 최대 길이`를 구해 패딩합니다.
+- `seqs` — 캡션마다 토큰화하고 끝에 `eos_token`을 붙입니다([LLM 파인튜닝](#34-llm-finetune)과 같은 이유: 멈추는 법도 배워야 함). 길이가 제각각이라 `n = 최대 길이`를 구해 패딩합니다.
 - `img = projector(img_feats.to(device).float())` — 캐시해 둔 16비트 특징을 32비트로 되돌려 프로젝터에 통과. `[B, 49, 768] → [B, 49, 896]`. 프로젝터는 마지막 축에만 작용하므로 49개 패치를 한 번에 처리합니다.
 - `embed(ids([pre_ids] * B))` — 토큰 번호 → 임베딩 벡터. 배치 크기만큼 복제합니다.
 - `torch.cat([pre_e, img, txt_e], dim=1)` — **시퀀스 축(dim=1)** 으로 이어 붙입니다. 결과 `[B, 앞 길이 + 49 + 뒤 길이 + 캡션 길이, 896]`. LLM 입장에서는 그냥 긴 임베딩 시퀀스이고, 그중 49개가 이미지에서 왔다는 것을 모릅니다. 이것이 "이미지를 처음 보는 단어처럼 읽는다"의 구현입니다.
-- `labels` — 프롬프트와 이미지 위치는 `-100`(채점 제외), 캡션 부분만 실제 토큰, 패딩은 다시 `-100`. [LLM 파인튜닝](#33-llm-finetune)의 라벨 마스킹에 이미지 49칸이 추가된 것입니다.
+- `labels` — 프롬프트와 이미지 위치는 `-100`(채점 제외), 캡션 부분만 실제 토큰, 패딩은 다시 `-100`. [LLM 파인튜닝](#34-llm-finetune)의 라벨 마스킹에 이미지 49칸이 추가된 것입니다.
 - `mask` — 실제 내용이 있는 위치는 1, 패딩은 0. 이미지 토큰 49개도 1입니다(어텐션이 봐야 하므로).
 - 마지막 `print`의 세 shape이 모두 같은 시퀀스 길이(97)를 가져야 합니다. 임베딩·마스크·라벨의 길이가 어긋나면 에러가 나거나, 더 나쁘게는 조용히 잘못 학습됩니다.
 ## 학습 전: LLM은 이미지 토큰을 전혀 이해하지 못합니다
@@ -249,5 +249,5 @@ torch.save(projector.state_dict(), "projector.pt")   # 저장할 것은 프로�
 2. `image_features`에서 `[:, 1:]`을 `[:, :1]`로 바꿔 CLS 토큰 **1개만** 쓰도록 해보세요 (`feats`를 다시 계산해야 합니다). 이미지 토큰 49개 vs 1개의 차이는?
 3. 직접 찍은 사진으로 시험해 보세요: Colab 왼쪽 파일 탭에 업로드 후 `from PIL import Image; describe(Image.open("내사진.jpg"))`. Flickr8k에 없는 종류의 사진(음식, 문서, 실내)에서는 어떻게 되나요? 왜일까요?
 4. 프롬프트의 `"Describe this image."`를 바꿔서 학습/추론해 보세요.
-5. (도전) 2단계 학습: [LLM 파인튜닝](#33-llm-finetune) 레슨의 LoRA를 `llm`에 붙이고, 프로젝터와 LoRA를 **함께** 학습시켜 보세요. 옵티마이저에 두 파라미터 그룹을 모두 넣어야 합니다.
-6. (도전) 설명을 한국어로: `captions`를 번역(예: [LLM 파인튜닝](#33-llm-finetune) 레슨의 모델에게 시키기)해서 한국어 캡션 모델을 만들어 보세요.
+5. (도전) 2단계 학습: [LLM 파인튜닝](#34-llm-finetune) 레슨의 LoRA를 `llm`에 붙이고, 프로젝터와 LoRA를 **함께** 학습시켜 보세요. 옵티마이저에 두 파라미터 그룹을 모두 넣어야 합니다.
+6. (도전) 설명을 한국어로: `captions`를 번역(예: [LLM 파인튜닝](#34-llm-finetune) 레슨의 모델에게 시키기)해서 한국어 캡션 모델을 만들어 보세요.

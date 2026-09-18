@@ -173,8 +173,8 @@ print("파라미터 수:", sum(p.numel() for p in model.parameters()))
 - `generate`의 `@torch.no_grad()` — 생성은 학습이 아니므로 그래프를 기록하지 않습니다.
 - `idx[:, -block_size:]` — 생성이 길어져 컨텍스트를 넘으면 마지막 128개만 봅니다. 위치 임베딩이 128개뿐이라 그 이상은 넣을 수 없습니다.
 - `logits[:, -1] / temperature` — 마지막 위치의 로짓만 씁니다(다음 글자 예측). temperature로 나누면 T<1일 때 분포가 뾰족해지고(확실한 것만), T>1일 때 평평해집니다(모험).
-- `torch.multinomial(probs, 1)` — 확률에 따라 하나를 **뽑습니다**. `argmax`(항상 1등)로 바꾸면 결과가 매번 같고 반복이 심해집니다. 샘플링 방법은 [LLM 다루기](#32-llm-inference)에서 자세히 다룹니다.
-- 파라미터 약 80만 개. GPT-2 small(1.2억)의 1/150, 큰 LLM의 1/100만입니다. 그러나 클래스 구조는 실제 LLM 코드와 거의 일대일로 대응합니다. [LLM 파인튜닝](#33-llm-finetune)에서 `print(model)`을 하면 확인할 수 있습니다.
+- `torch.multinomial(probs, 1)` — 확률에 따라 하나를 **뽑습니다**. `argmax`(항상 1등)로 바꾸면 결과가 매번 같고 반복이 심해집니다. 샘플링 방법은 [LLM 다루기](#33-llm-inference)에서 자세히 다룹니다.
+- 파라미터 약 80만 개. GPT-2 small(1.2억)의 1/150, 큰 LLM의 1/100만입니다. 그러나 클래스 구조는 실제 LLM 코드와 거의 일대일로 대응합니다. [LLM 파인튜닝](#34-llm-finetune)에서 `print(model)`을 하면 확인할 수 있습니다.
 
 ## 학습 전: 아무 말이나 뱉습니다
 
@@ -208,7 +208,7 @@ for step in range(max_steps + 1):
 
 **코드 읽기**
 
-- `torch.log(torch.tensor(float(vocab_size)))` — 학습 전 loss의 예상값 `ln 65 ≈ 4.17`. [학습 잘 시키는 법](#23-training-recipes)의 "초기 loss 확인"과 같습니다. 실제 값이 이 근처면 초기화와 손실 계산이 정상입니다.
+- `torch.log(torch.tensor(float(vocab_size)))` — 학습 전 loss의 예상값 `ln 65 ≈ 4.17`. [학습 잘 시키는 법](#24-training-recipes)의 "초기 loss 확인"과 같습니다. 실제 값이 이 근처면 초기화와 손실 계산이 정상입니다.
 - `estimate_loss(iters=20)` — 배치 하나의 loss는 우연히 쉽거나 어려운 구간이 걸려 요동칩니다. 20개 배치를 평균해서 안정된 값을 봅니다. train과 val을 **같은 방법으로** 재야 둘의 차이가 과적합의 크기가 됩니다.
 - `model.eval()` → 측정 → `model.train()` — 지금 모델에는 dropout이 없어 차이가 없지만, 습관으로 넣어 둡니다.
 - `torch.optim.AdamW(lr=3e-4)` — LLM 학습의 표준 옵티마이저. `3e-4`는 트랜스포머에서 "일단 이걸로 시작"하는 관례적 값입니다(Karpathy가 농담으로 "Adam의 최적 학습률"이라고 부른 숫자). 모델이 커질수록 더 작게 잡습니다.
