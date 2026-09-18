@@ -75,6 +75,13 @@ article th, article td { border:1px solid var(--line); padding:7px 13px; text-al
 article th { background:var(--side); }
 article img { max-width:100%; }
 article hr { border:0; border-top:1px solid var(--line); margin:2.5em 0; }
+/* 코드 읽기 해설 */
+.reading { margin:-.4em 0 1.8em; padding:12px 18px 4px; border-left:3px solid var(--accent); background:var(--side); border-radius:0 10px 10px 0; font-size:15.5px; line-height:1.75; }
+.reading > p { margin:0 0 .4em; }
+.reading > p > strong:first-child { color:var(--accent); font-size:13px; letter-spacing:.04em; text-transform:uppercase; }
+.reading ul { margin:.2em 0 .6em; padding-left:1.2em; }
+.reading li { margin:.45em 0; }
+.reading li > code:first-child { font-weight:600; }
 /* 핵심 정리 · 스스로 점검 · 직접 고쳐보기 */
 .box { border:1px solid var(--line); border-radius:12px; padding:4px 22px 12px; margin:2.4em 0 0; background:var(--card); }
 .box > h2 { margin-top:.8em; font-size:20px; }
@@ -242,6 +249,13 @@ function decorate(root) {
     meta.className = "meta";
     meta.innerHTML = meta.textContent.trim().split(" · ").map(t => `<span>${esc(t)}</span>`).join("");
   }
+  // '**코드 읽기**' 문단 + 뒤따르는 목록을 해설 박스로 묶음
+  root.querySelectorAll("p > strong:first-child").forEach(s => {
+    if (!s.textContent.startsWith("코드 읽기") || s.parentElement.firstChild !== s) return;
+    const p = s.parentElement, ul = p.nextElementSibling, box = Object.assign(document.createElement("div"), { className: "reading" });
+    p.before(box); box.append(p);
+    if (ul?.tagName === "UL") box.append(ul);
+  });
   const kinds = { "핵심 정리": "summary", "스스로 점검": "quiz", "직접 고쳐보기": "practice" };
   root.querySelectorAll("h2").forEach(h => {
     const kind = Object.keys(kinds).find(k => h.textContent.includes(k));

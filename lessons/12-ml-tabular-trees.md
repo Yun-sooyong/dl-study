@@ -44,6 +44,8 @@ X, y = df.drop(columns="MedHouseVal"), df["MedHouseVal"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
 ```
 
+**코드 읽기**
+
 - `df.drop(columns="MedHouseVal")` — 정답 열을 뺀 나머지가 입력 X입니다. 정답을 입력에 실수로 남겨 두면 모델이 "정답을 보고 정답을 맞히는" 100점짜리 가짜 결과를 냅니다(데이터 누출). 표 데이터에서 가장 흔한 실수이니 `X.columns`를 한 번 출력해 확인하는 습관을 들이세요.
 - 이번에는 `stratify`가 없습니다. 회귀 문제는 정답이 연속값이라 "클래스 비율"이라는 개념이 없기 때문입니다.
 ## 기준선부터 세운다
@@ -86,6 +88,8 @@ linear = evaluate("선형 회귀", LinearRegression())
 print(pd.Series(linear.coef_, index=X.columns).round(3))
 ```
 
+**코드 읽기**
+
 - `pd.Series(값 배열, index=이름)` — 숫자 배열에 열 이름을 붙여 "어느 특징의 가중치인지" 읽을 수 있게 합니다. `MedInc`(소득)의 가중치가 +0.43이면 "소득이 1 늘면 집값이 4.3만 달러 오른다"로 읽습니다. `Latitude`, `Longitude`가 음수인 것은 북쪽·동쪽으로 갈수록 싸다는 뜻(캘리포니아 해안이 남서쪽). 이렇게 **모델을 읽을 수 있다**는 것이 선형 모델의 큰 장점입니다.
 ## 결정 트리: 스무고개로 예측하기
 
@@ -111,6 +115,8 @@ plt.figure(figsize=(13, 5)); plot_tree(small, feature_names=list(X.columns), fil
 evaluate("트리 (깊이 제한 없음)", DecisionTreeRegressor(random_state=0))   # train MAE가 0에 가깝습니다
 evaluate("트리 (깊이 8)", DecisionTreeRegressor(max_depth=8, random_state=0))
 ```
+
+**코드 읽기**
 
 - `max_depth`를 주지 않으면 잎 하나에 샘플 하나가 남을 때까지 쪼갭니다. train MAE가 0.000인 것이 그 증거입니다. `max_depth=8`은 "질문을 8번까지만"이라는 **복잡도 제한**이고, 앞 레슨의 정규화 표에서 "모델 크기 제한"에 해당합니다. `min_samples_leaf`(잎에 최소 몇 개는 남겨라)도 같은 목적의 손잡이입니다.
 - 트리에 `random_state`가 있는 이유: 오차 감소량이 똑같은 질문이 여럿일 때 무작위로 고르기 때문입니다. 고정하지 않으면 실행마다 조금씩 다른 트리가 나옵니다.

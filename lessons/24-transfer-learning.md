@@ -91,6 +91,8 @@ def train(model, epochs, lr):
     return accuracy(model)
 ```
 
+**코드 읽기**
+
 - `params = [p for p in model.parameters() if p.requires_grad]` — 옵티마이저에는 **학습할 파라미터만** 넘깁니다. 얼린 파라미터를 넘겨도 `.grad`가 없어 갱신은 안 되지만, AdamW가 그들을 위한 상태 메모리를 쓸데없이 잡습니다. 이 필터는 LoRA 학습에서도 똑같이 나옵니다.
 - `sum(p.numel() for p in params)` 출력 — 얼렸을 때 5,130개(= 512×10 + 10), 아닐 때 1,100만 개. 실험 전에 이 숫자를 찍어 "내가 의도한 부분만 학습되는지" 확인하는 것이 습관이 되어야 합니다.
 - `train(model, epochs, lr)`이 `lr`을 인자로 받는 이유 — 아래에서 파인튜닝만 학습률을 다르게 주기 위해서입니다.
