@@ -150,11 +150,7 @@ JUDGE_SYSTEM = """너는 엄격한 채점관이다. 질문의 요구(내용, 길
 
 def judge_score(question, response):
     messages = [{"role": "system", "content": JUDGE_SYSTEM},
-                {"role": "user", "content": f"[질문]
-{question}
-
-[답변]
-{response}"}]
+                {"role": "user", "content": f"[질문]\n{question}\n\n[답변]\n{response}"}]
     prompt = judge_tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     inputs = judge_tok(prompt, return_tensors="pt").to(device)
     with torch.no_grad():
@@ -166,10 +162,7 @@ def judge_score(question, response):
 for q in open_questions:
     resp = answer(small_tok, small, q, max_new_tokens=120)
     s, verdict = judge_score(q, resp)
-    print(f"Q: {q}
-답변: {resp[:100]}…
-심사: {s}점 — {verdict.replace(chr(10), ' | ')[:90]}
-")
+    print(f"Q: {q}\n답변: {resp[:100]}…\n심사: {s}점 — {verdict.replace(chr(10), ' | ')[:90]}\n")
 ```
 
 **코드 읽기**
