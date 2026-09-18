@@ -213,3 +213,12 @@ model.save_pretrained("caption-lora")
 2. `target_modules`의 `text_model`을 `vision_model`로 바꿔 **눈만** 학습시켜 보세요 (vision 쪽 출력 projection 이름은 `out_proj`입니다). 결과가 어떻게 다른가요?
 3. `do_image_splitting = True`로 켜면 이미지가 여러 조각으로 나뉘어 토큰 수가 크게 늘어납니다. 이 경우 `prompt_len`이 샘플마다 달라지므로 `collate`를 어떻게 고쳐야 할까요?
 4. **내 과제로 바꾸기:** `QUESTION`과 정답을 바꿔 보세요. 예: 질문을 `"Is there a dog in this image? Answer yes or no."`로 하고, 정답은 캡션에 "dog"가 들어있는지로 자동 생성.
+
+<details><summary>힌트와 예상 결과 — 먼저 스스로 해 본 뒤 펼치세요</summary>
+
+1. 파인튜닝 후 "How many people…"에 "2 people are walking…" 같은 캡션 형식으로 답하거나 숫자를 틀립니다. 한 형식만 800장 학습한 대가입니다. 데이터에 다양한 질문(개수, 색, 예/아니오)을 섞으면 완화됩니다.
+2. `target_modules=r".*vision_model.*\.(q_proj|k_proj|v_proj|out_proj)"`. 눈만 학습하면 loss가 잘 안 내려가고 출력 형식도 안 바뀝니다. 형식은 언어 모델이 결정하기 때문입니다. 반대로 특수 이미지 도메인에서는 눈 학습이 필요합니다.
+3. 이미지마다 조각 수가 달라 `prompt_len`이 샘플별로 다릅니다. `collate` 안에서 샘플마다 `processor(text=prompt, images=[img])`로 프롬프트 길이를 따로 재서 마스킹하거나, 이미지 토큰 id(`processor.image_token_id`)와 `Assistant:` 위치를 찾아 그 앞을 가리는 방식으로 바꿔야 합니다.
+4. `QUESTION = "Is there a dog in this image? Answer yes or no."`, 정답 = `"yes" if "dog" in caption.lower() else "no"`. 정확도를 파인튜닝 전후로 재면(정확 일치) 기준선 0.6~0.7에서 0.9 이상으로 올라갑니다. 예/아니오 문항은 [LLM 평가](#37-llm-eval)의 정확 일치 채점이 그대로 적용됩니다.
+
+</details>

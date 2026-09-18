@@ -2,14 +2,14 @@
 
 사이트: https://yun-sooyong.github.io/dl-study/
 
-머신러닝 기초 → 딥러닝 → LLM(토크나이저, 미니 GPT, 추론, LoRA 파인튜닝, RAG, DPO) → VLM(CLIP, 미니 VLM, VLM 파인튜닝)까지,
+0부(환경, 필요한 수학) → 머신러닝 기초 → 딥러닝(역전파 직접 구현 포함) → LLM(토크나이저, 미니 GPT, 사전학습 실전, 추론, LoRA 파인튜닝, RAG, DPO, 평가) → VLM(CLIP, 미니 VLM, VLM 파인튜닝) → 프로젝트(가이드, 종합 과제와 채점표, 한계와 책임)까지 26개 레슨,
 각 레슨을 사이트에서 읽고 버튼 하나로 Colab(무료 GPU)에서 실행합니다. 모든 레슨 코드는 실제로 실행해 검증했습니다.
 
 ## 구조
 
 ```
 index.html      사이트 전체 (빌드 도구 없음. marked + highlight.js CDN)
-lessons/*.md    레슨 원본 ← 여기만 고치면 됩니다. 파일명 첫 숫자가 파트 (1=ML, 2=DL, 3=LLM, 4=VLM, 5=프로젝트)
+lessons/*.md    레슨 원본 ← 여기만 고치면 됩니다. 파일명 첫 숫자가 파트 (0=시작, 1=ML, 2=DL, 3=LLM, 4=VLM, 5=프로젝트)
 glossary.md     용어 사전. `**용어 / 별칭 (english)** — 설명` 한 문단이 항목 하나, `##`가 분류.
                 레슨 본문에 처음 나오는 용어는 자동으로 툴팁이 붙습니다.
 build.py        lessons/*.md → notebooks/*.ipynb + lessons.json 생성, 레슨 간 링크 검사
@@ -43,4 +43,5 @@ git add -A && git commit -m "레슨 수정" && git push    # push하면 1~2분 �
 - ` ```python ` 블록만 노트북의 코드 셀이 됩니다. 그 외는 전부 마크다운 셀. 위에서 아래로 순서대로 실행했을 때 동작해야 합니다.
 - 다른 레슨은 `[이름](#파일id)`로 링크 (없는 id면 build.py가 에러를 냅니다)
 - 그래프 제목·라벨은 영어로 (Colab matplotlib에 한글 폰트가 없음)
+- `## 직접 고쳐보기` 목록 뒤에 `<details><summary>힌트와 예상 결과 …</summary>` 블록으로 문항별 예상 결과를 적습니다(실제로 돌려 본 값 기준).
 - 새 용어가 나오면 `glossary.md`에 추가

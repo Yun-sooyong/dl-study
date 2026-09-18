@@ -207,3 +207,12 @@ print("최종 test 오차:", mean_squared_error(y_test, final.predict(x_test[:, 
 2. 학습 데이터를 20개에서 10개로 줄이면 과적합이 시작되는 차수가 어떻게 달라지나요?
 3. `Ridge`의 `alpha`를 교차검증으로 골라 보세요. (`for alpha in [1e-4, 1e-3, 1e-2, 0.1, 1, 10, 100]`)
 4. (도전) `sklearn.model_selection.GridSearchCV`로 차수와 alpha를 동시에 탐색해 보세요.
+
+<details><summary>힌트와 예상 결과 — 먼저 스스로 해 본 뒤 펼치세요</summary>
+
+1. 노이즈가 작으면(0.05) 높은 차수도 진짜 관계를 잘 따라가 최적 차수가 올라가고(5~7차), 노이즈가 크면(0.6) 낮은 차수(3차)가 최선입니다. 노이즈가 클수록 단순한 모델이 안전합니다.
+2. 10개면 4~5차부터 이미 test 오차가 튀기 시작합니다. 데이터가 적을수록 과적합이 더 낮은 복잡도에서 시작합니다.
+3. `cross_val_score(make_pipeline(PolynomialFeatures(15), StandardScaler(), Ridge(alpha=a)), ...)`를 alpha마다 돌리면 1e-2 근처가 최선으로 나옵니다. 본문에서 눈으로 고른 값과 같은지 확인하세요.
+4. `GridSearchCV(pipeline, {"polynomialfeatures__degree": range(1, 16), "ridge__alpha": [...]}, cv=5, scoring="neg_mean_squared_error")`. 파이프라인 단계 이름과 인자를 `__`로 잇는 것이 규칙입니다. `.best_params_`로 결과를 봅니다.
+
+</details>

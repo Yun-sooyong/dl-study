@@ -179,3 +179,13 @@ print([g["lr"] for g in optimizer.param_groups])
 3. `layer4`만 풀고 나머지는 얼려 보세요: 얼린 뒤 `for p in model.layer4.parameters(): p.requires_grad = True`.
 4. `models.resnet50(weights="IMAGENET1K_V2")`나 `models.efficientnet_b0(weights="IMAGENET1K_V1")`로 바꿔 보세요. 머리의 이름이 모델마다 다릅니다(`fc`, `classifier`). `print(model)`로 확인하세요.
 5. (도전) [학습 잘 시키는 법](#24-training-recipes)의 데이터 증강과 스케줄러를 ③에 적용해 정확도를 더 올려 보세요.
+
+<details><summary>힌트와 예상 결과 — 먼저 스스로 해 본 뒤 펼치세요</summary>
+
+1. 200장: scratch 약 0.2, frozen 약 0.5, fine-tune 약 0.6. 2000장: 0.3 / 0.6 / 0.75. 20000장: scratch가 0.6대까지 올라 격차가 줄지만 여전히 fine-tune이 앞섭니다. 데이터가 많아질수록 "처음부터"가 따라잡습니다.
+2. `lr=1e-2`면 첫 에폭 정확도가 0.1~0.3으로 무너집니다. 사전학습 가중치가 첫 스텝들에서 파괴되어 "나쁜 초기값에서 처음부터"가 됩니다.
+3. 학습 파라미터 약 840만(layer4는 ResNet-18 파라미터의 대부분). 정확도는 전체 파인튜닝과 거의 같으면서 앞쪽 층은 보호됩니다. 데이터가 적을 때 흔히 쓰는 절충입니다.
+4. ResNet-50: `model.fc`. EfficientNet-B0: `model.classifier[1]`(`Sequential(Dropout, Linear)`). 큰 모델은 정확도가 조금 더 높지만 T4에서 2~3배 느립니다.
+5. `RandomHorizontalFlip`, `RandomCrop(224, padding=16)` + `OneCycleLR`로 3 에폭에서 0.78 이상을 노려 보세요. 증강은 학습 데이터 `transform`에만 넣습니다.
+
+</details>

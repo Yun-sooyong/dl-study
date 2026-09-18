@@ -235,3 +235,14 @@ top-k는 후보 수가 항상 k개로 고정입니다. top-p는 모델이 확신
 4. 시스템 프롬프트를 바꿔 "항상 JSON으로 답하는" 챗봇을 만들어 보세요. 0.5B 모델이 얼마나 잘 지키나요?
 5. (도전) `greedy`에 KV 캐시를 직접 구현해 보세요: 첫 호출에서 `out = model(ids, use_cache=True)`로 `out.past_key_values`를 받고, 다음부터는 `model(next_id.view(1, 1), past_key_values=past, use_cache=True)`처럼 새 토큰 하나만 넣습니다.
 6. (도전) 모델을 `Qwen/Qwen2.5-1.5B-Instruct`로 바꿔 한계 확인 질문의 답이 어떻게 달라지는지 보세요.
+
+<details><summary>힌트와 예상 결과 — 먼저 스스로 해 본 뒤 펼치세요</summary>
+
+1. `top_k=1`은 항상 1등만 남기므로 greedy와 같습니다. `temperature`와 무관하게 결과가 고정됩니다.
+2. temperature 1.0에서 5번은 첫 문장부터 다르게 갈라집니다. `top_p=0.5`를 주면 흔한 토큰만 남아 5번의 결과가 서로 비슷해지고 문장이 안정됩니다.
+3. 예시 0개: "긍정입니다." 같은 문장이 섞여 형식이 자주 깨집니다. 2개: 대부분 한 단어. 6개: 거의 항상 한 단어. 작은 모델일수록 예시 수의 효과가 큽니다.
+4. 시스템 프롬프트에 형식과 예시를 넣어도 0.5B는 JSON 앞뒤에 말을 붙이거나 따옴표를 틀리는 경우가 잦습니다. 파서로 검증하고 실패하면 재시도하는 코드가 필요합니다([LLM 평가](#37-llm-eval)의 json 채점).
+5. 첫 호출 `out = model(ids, use_cache=True); past = out.past_key_values`, 이후 `out = model(next_id.view(1, 1), past_key_values=past, use_cache=True)`로 새 토큰 하나만 넣고 `past = out.past_key_values`로 갱신합니다. 60토큰 생성이 2~3배 빨라집니다.
+6. 1.5B는 "세종대왕 맥북" 질문을 더 자주 거절하고 산수도 더 맞힙니다. 그러나 여전히 지어내는 경우가 있습니다. 크기는 환각을 줄이지만 없애지 못합니다.
+
+</details>

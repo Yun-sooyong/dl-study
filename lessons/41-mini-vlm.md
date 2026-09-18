@@ -251,3 +251,14 @@ torch.save(projector.state_dict(), "projector.pt")   # 저장할 것은 프로�
 4. 프롬프트의 `"Describe this image."`를 바꿔서 학습/추론해 보세요.
 5. (도전) 2단계 학습: [LLM 파인튜닝](#34-llm-finetune) 레슨의 LoRA를 `llm`에 붙이고, 프로젝터와 LoRA를 **함께** 학습시켜 보세요. 옵티마이저에 두 파라미터 그룹을 모두 넣어야 합니다.
 6. (도전) 설명을 한국어로: `captions`를 번역(예: [LLM 파인튜닝](#34-llm-finetune) 레슨의 모델에게 시키기)해서 한국어 캡션 모델을 만들어 보세요.
+
+<details><summary>힌트와 예상 결과 — 먼저 스스로 해 본 뒤 펼치세요</summary>
+
+1. Linear 하나로도 학습됩니다. loss는 2층 MLP보다 0.1~0.2 높고, 설명이 더 일반적("A dog is running")으로 뭉개집니다. 통역사의 표현력이 결과에 반영됩니다.
+2. CLS 1개만 쓰면 loss가 더 높고, 설명이 "무엇이 있다"까지만 맞고 배경·행동을 자주 틀립니다. 위치 정보가 벡터 하나에 담기지 않기 때문입니다.
+3. Flickr 스타일(사람·개·야외)과 다른 사진(음식, 문서)은 "A man is standing…" 같은 흔한 문장으로 답합니다. 학습 분포 밖에서는 가장 흔한 캡션을 내놓는 것이 모델의 최선입니다.
+4. 프롬프트를 바꿔도 학습·추론에서 같은 프롬프트를 쓰면 결과는 거의 같습니다. 학습 때와 다른 프롬프트로 추론하면 품질이 떨어집니다. 프롬프트도 학습된 조건의 일부입니다.
+5. `llm = get_peft_model(llm, LoraConfig(...))`, `optimizer = AdamW([{"params": projector.parameters(), "lr": 1e-3}, {"params": [p for p in llm.parameters() if p.requires_grad], "lr": 1e-4}])`. loss가 더 내려가고 문장이 자연스러워지지만 학습 시간이 2배 이상 듭니다. 이것이 LLaVA의 2단계입니다.
+6. Qwen 0.5B에게 캡션을 한국어로 번역시킨 뒤(품질 검수 필요) 같은 코드로 학습하면 됩니다. 한국어 캡션은 토큰이 더 길어 `n`이 커지고 학습이 조금 느립니다.
+
+</details>

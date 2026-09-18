@@ -167,3 +167,12 @@ train(cnn2, epochs=1)
 2. Conv 블록을 하나 더 추가하세요 (`Conv2d(32, 64, ...)`). `Linear`의 입력 크기는 얼마가 되어야 하나요? 위의 shape 추적 방법으로 구하세요.
 3. `nn.Dropout(0.3)`을 classifier에, `nn.BatchNorm2d(16)`을 첫 Conv 뒤에 넣어보세요.
 4. (도전) [첫 신경망](#21-mlp-mnist) 레슨의 MLP로 FashionMNIST를 학습한 뒤 저장하고, 새 노트북 셀에서 불러와 평가해 보세요.
+
+<details><summary>힌트와 예상 결과 — 먼저 스스로 해 본 뒤 펼치세요</summary>
+
+1. FashionMNIST에서 MLP 약 0.87~0.88, CNN 약 0.90~0.91. 숫자보다 어렵고(옷 종류가 서로 비슷) 격차가 조금 벌어집니다.
+2. Conv 블록 3개면 28 → 14 → 7 → 3(MaxPool은 내림)이므로 `Linear(64 * 3 * 3, 10)`. 가짜 입력을 통과시켜 `[1, 576]`을 확인하세요.
+3. `nn.Conv2d(1, 16, 3, padding=1), nn.BatchNorm2d(16), nn.ReLU(), ...` 순서(Conv → BN → ReLU). Dropout은 `nn.Flatten(), nn.Dropout(0.3), nn.Linear(...)`. 2 에폭에서는 정확도 차이가 작지만 BN 덕에 초반 loss가 더 빨리 내려갑니다.
+4. `torch.save(mlp.state_dict(), "mlp_fashion.pt")` → 새 셀에서 `MLP()`를 다시 만들고 `load_state_dict(torch.load(...))` → `evaluate`. 불러오기 전(약 0.1)과 후(약 0.88)를 비교하세요. 클래스 정의 셀을 먼저 실행해야 합니다.
+
+</details>

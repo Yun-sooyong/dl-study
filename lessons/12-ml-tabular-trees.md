@@ -197,3 +197,13 @@ plt.xlabel("true"); plt.ylabel("predicted"); plt.show()    # 대각선에 가까
 3. 위도·경도 열을 빼고(`X.drop(columns=["Latitude", "Longitude"])`) 학습하면 얼마나 나빠지나요? 선형 회귀와 부스팅 중 어느 쪽이 더 크게 나빠지나요? 왜일까요?
 4. 새 특징을 만들어 넣어 보세요(예: `df["AveRooms"] / df["AveOccup"]`). 이런 작업을 특징 공학(feature engineering)이라고 합니다. 딥러닝은 이 작업을 모델이 스스로 하게 만든 것입니다.
 5. (도전) `sklearn.datasets.load_breast_cancer`(분류 문제)에 같은 모델들의 `Classifier` 버전을 적용해 비교표를 만들어 보세요.
+
+<details><summary>힌트와 예상 결과 — 먼저 스스로 해 본 뒤 펼치세요</summary>
+
+1. 깊이 2: train·test 모두 높음(과소적합). 8: test MAE 최소 근처(약 0.47). 16: train은 계속 내려가지만 test는 오히려 오르기 시작. None: train 0, test 0.47. 깊이 10~12 근처부터 과적합입니다.
+2. 1그루 약 0.47(단일 트리와 같음), 10그루 약 0.37, 100그루 약 0.335, 300그루 약 0.33. 100 근처에서 포화합니다. 트리 수는 많을수록 좋지만 어느 순간부터 시간만 늘어납니다.
+3. 부스팅이 더 크게 나빠집니다(R² 0.84 → 0.7대). 위치는 집값을 결정하는 비선형 정보이고, 트리는 그것을 "이 좌표 범위면 비싸다"로 잘 활용하지만 선형 모델은 원래 위도·경도를 직선적으로만 쓰고 있어 잃는 것이 적습니다.
+4. `AveRooms / AveOccup`(사람당 방 수)을 넣으면 선형 회귀의 R²가 조금 오릅니다(0.59 → 0.6대). 트리 모델은 이런 비율을 스스로 근사할 수 있어 이득이 작습니다. 특징 공학은 단순한 모델에서 효과가 큽니다.
+5. `RandomForestClassifier`, `HistGradientBoostingClassifier`, `LogisticRegression`(스케일러 포함) 모두 정확도 0.95~0.98. 회귀 → 분류로 바뀌어도 `evaluate` 함수의 지표만 `accuracy_score`로 바꾸면 됩니다.
+
+</details>

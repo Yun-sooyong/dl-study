@@ -269,3 +269,13 @@ print("같은 배치 200번 학습 후 loss:", loss.item(), " 정확도:", (mode
 3. `lr=1e-1`과 `lr=1e-5`로 baseline을 돌려 위 진단표의 어느 모양이 나오는지 확인하세요.
 4. `OneCycleLR` 대신 `torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs * len(aug_dl))`을 써 보세요.
 5. (도전) `make_cnn`에 `nn.BatchNorm2d`를 각 Conv 뒤에 넣어 보세요. 수렴 속도가 어떻게 달라지나요?
+
+<details><summary>힌트와 예상 결과 — 먼저 스스로 해 본 뒤 펼치세요</summary>
+
+1. 2000장·30에폭 기준으로 val loss 마지막 값: baseline 약 0.57, dropout만 약 0.45, wd만 약 0.5, flip만 약 0.5. dropout 단독 효과가 가장 큽니다(큰 Linear 층이 과적합의 주범이라서). 정확도는 셋 다 0.85 근처.
+2. 20000장이면 baseline의 val loss가 0.3 아래로, 정확도 0.9 이상. 정규화 세 개를 합친 것보다 데이터 10배가 훨씬 큽니다.
+3. `1e-1`: loss가 2.3 근처에서 정체하거나 nan(발산, 진단표의 마지막 줄). `1e-5`: 30 에폭 뒤에도 loss 1.0 이상(과소적합처럼 보이는 "학습률 너무 작음").
+4. 코사인만 쓰면 warmup 없이 처음부터 큰 학습률로 시작합니다. 이 작은 모델에서는 차이가 작지만, 최고 정확도 도달 에폭이 조금 뒤로 밀리는 것을 볼 수 있습니다.
+5. `nn.Conv2d(...), nn.BatchNorm2d(32), nn.ReLU()`. 1~3 에폭에서 val 정확도가 baseline보다 빠르게 오릅니다(예: 1 에폭 0.75 → 0.8). 최종 정확도도 1~2%p 높습니다.
+
+</details>

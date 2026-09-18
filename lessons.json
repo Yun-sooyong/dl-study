@@ -1,7 +1,7 @@
 [
  {
   "id": "00-start",
-  "title": "시작하기 — 로드맵과 학습 방법",
+  "title": "강의 개요 — 이 코스로 무엇을, 어떻게 배우나",
   "part": "0부 · 시작하기",
   "code": false
  },
@@ -84,6 +84,12 @@
   "code": true
  },
  {
+  "id": "32-scaling",
+  "title": "미니 GPT를 진짜에 가깝게 — BPE, 학습 안정화, 스케일링",
+  "part": "3부 · LLM",
+  "code": true
+ },
+ {
   "id": "33-llm-inference",
   "title": "사전학습 LLM 다루기 — 생성, 샘플링, 프롬프트",
   "part": "3부 · LLM",
@@ -108,6 +114,12 @@
   "code": true
  },
  {
+  "id": "37-llm-eval",
+  "title": "LLM 평가 — \"좋아졌다\"를 숫자로 말하기",
+  "part": "3부 · LLM",
+  "code": true
+ },
+ {
   "id": "40-clip",
   "title": "CLIP — 이미지와 글을 같은 공간에 놓기",
   "part": "4부 · VLM",
@@ -128,6 +140,18 @@
  {
   "id": "50-your-project",
   "title": "내 프로젝트 시작하기 — 실전 가이드",
+  "part": "5부 · 내 프로젝트로",
+  "code": false
+ },
+ {
+  "id": "51-capstone",
+  "title": "종합 프로젝트 과제 — 세 가지 중 하나를 끝까지",
+  "part": "5부 · 내 프로젝트로",
+  "code": false
+ },
+ {
+  "id": "52-limits-and-responsibility",
+  "title": "한계와 책임 — 만들 수 있게 된 사람이 알아야 할 것",
   "part": "5부 · 내 프로젝트로",
   "code": false
  }
