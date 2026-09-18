@@ -35,7 +35,7 @@ for f in sorted((root / "lessons").glob("*.md")):
     nb = {"cells": list(cells(md)), "nbformat": 4, "nbformat_minor": 5,
           "metadata": {"accelerator": "GPU", "colab": {"gpuType": "T4"},
                        "kernelspec": {"name": "python3", "display_name": "Python 3"}}}
-    (root / "notebooks" / f"{f.stem}.ipynb").write_text(json.dumps(nb, ensure_ascii=False, indent=1), encoding="utf-8")
+    (root / "notebooks" / f"{f.stem}.ipynb").write_text(json.dumps(nb, ensure_ascii=False, indent=1), encoding="utf-8", newline="\n")
     index.append({"id": f.stem, "title": md.splitlines()[0].lstrip("# ").strip(), "part": PARTS[f.stem[0]],
                   "code": any(c["cell_type"] == "code" for c in nb["cells"])})
 
@@ -47,6 +47,6 @@ glossary = (root / "glossary.md").read_text(encoding="utf-8")
 broken = [t for t in re.findall(r"\]\(#([^)]+)\)", glossary) if t not in ids]
 assert not broken, f"glossary.md: 없는 레슨으로 가는 링크 {broken}"
 
-(root / "lessons.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8")
+(root / "lessons.json").write_text(json.dumps(index, ensure_ascii=False, indent=1), encoding="utf-8", newline="\n")
 assert index and all(x["title"] for x in index), "레슨 첫 줄은 '# 제목' 이어야 합니다"
 print(f"{len(index)} lessons built")
