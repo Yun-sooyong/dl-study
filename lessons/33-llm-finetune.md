@@ -49,6 +49,14 @@ for q in test_questions:
 
 `generate`가 하는 일은 [미니 GPT](#31-mini-gpt) 레슨의 `generate`와 똑같습니다. 다음 토큰을 하나 뽑아 이어붙이고 반복합니다.
 
+**코드 읽기**
+
+- `print(model)` 출력을 [미니 GPT](#31-mini-gpt)와 대조해 보세요: `embed_tokens`(= `tok_emb`), `layers` 24개(= `blocks`), 각 층의 `self_attn`(`q_proj`, `k_proj`, `v_proj`, `o_proj` = `qkv`와 `proj`), `mlp`, `norm`(= `ln_f`), `lm_head`(= `head`). 이름만 다를 뿐 같은 구조입니다. 아래 LoRA 설정의 `target_modules`에 적는 이름이 바로 이 출력에서 온 것입니다.
+- `[tok.decode(i) for i in ids]` — 토큰 하나하나가 어떤 조각인지 봅니다. 한국어가 어떻게 잘리는지 알아야 데이터가 몇 토큰인지 어림할 수 있습니다.
+- `chat(model, question)` 함수를 `model`을 인자로 받게 만든 이유 — 아래에서 LoRA를 붙인 모델, 저장 후 다시 불러온 모델 등 **여러 모델 객체**에 같은 질문을 던지기 위해서입니다.
+- `do_sample=False` — 학습 전과 후를 비교할 때 무작위성이 섞이면 "달라진 게 학습 때문인지 운 때문인지" 알 수 없습니다. 비교 실험에서는 greedy로 고정합니다.
+- `test_questions`를 학습 데이터에 넣지 않는 이유 — 학습에 쓴 질문으로 확인하면 외운 답을 보는 것입니다. 이 세 질문은 끝까지 학습 데이터 밖에 둡니다.
+
 ## LoRA: 전체를 건드리지 않고 조금만 학습하기
 
 5억 개 파라미터를 전부 학습하려면 메모리가 많이 들고, 데이터가 적으면 모델이 망가지기도 쉽습니다. **LoRA**는 원래 가중치 `W`는 얼려두고([CNN](#22-cnn) 레슨의 freeze), 옆에 작은 행렬 두 개 `A`, `B`를 붙여 `W·x + B·A·x`를 계산합니다. 학습되는 건 `A`, `B`뿐입니다.
@@ -75,6 +83,15 @@ layer = LoRALinear(nn.Linear(896, 896))
 print("원래:", 896 * 896, " LoRA가 학습하는 양:", layer.A.numel() + layer.B.numel())
 ```
 
+**코드 읽기 — 직접 만든 LoRA**
+
+- `self.base = base` + 파라미터 얼리기 — 원래 `Linear`를 그대로 품고, 그 가중치는 학습에서 제외합니다.
+- `self.A = nn.Parameter(torch.randn(r, in) * 0.01)` — `nn.Parameter`로 감싸야 모델의 학습 대상으로 등록됩니다. 작은 난수로 초기화.
+- `self.B = nn.Parameter(torch.zeros(out, r))` — **0으로** 초기화. 그러면 `B·A = 0`이라 학습 시작 시점에 이 층은 원래 층과 완전히 같습니다. 멀쩡한 모델에서 출발해 조금씩 벗어나는 것이 파인튜닝의 원칙입니다.
+- `x @ self.A.T @ self.B.T` — `[.., in] → [.., r] → [.., out]`. 큰 행렬 `W`(896×896 = 80만)를 곱하는 대신, 좁은 통로 `r=8`을 지나는 두 개의 작은 행렬(896×8 두 개 = 1.4만)을 곱합니다. `r`이 작을수록 파라미터가 적고 표현력이 제한됩니다.
+- `self.scale = alpha / r` — LoRA 출력의 배율. `r`을 바꿔도 출력 크기가 비슷하게 유지되도록 `alpha`를 `r`로 나눕니다. 관례적으로 `alpha = 2r`.
+- 왜 `W + BA`가 통하나: 파인튜닝으로 생기는 가중치 변화 `ΔW`는 실제로 "낮은 랭크"(적은 수의 방향으로만 변화)라는 것이 LoRA 논문의 관찰입니다. 그렇다면 `ΔW`를 처음부터 `B·A` 꼴로 제한해도 손해가 거의 없습니다.
+
 실제로는 `peft` 라이브러리가 모델 안의 Linear들을 찾아 이렇게 바꿔 줍니다.
 
 ```python
@@ -86,6 +103,12 @@ model = get_peft_model(model, config)
 model.print_trainable_parameters()   # 전체의 0.2% 정도만 학습
 ```
 
+**코드 읽기 — peft**
+
+- `LoraConfig(...)` — LoRA 설정 묶음. `r`, `lora_alpha`는 위의 직접 구현과 같은 뜻. `lora_dropout=0.05`는 LoRA 입력에 dropout을 살짝 걸어 과적합을 줄입니다(데이터 20개뿐이라 유용). `task_type="CAUSAL_LM"`은 모델 종류를 알려 줘 저장·불러오기가 올바르게 되도록 합니다.
+- `target_modules=["q_proj", "k_proj", "v_proj", "o_proj"]` — 이 이름을 가진 `Linear` 층마다 LoRA를 붙입니다. 왜 어텐션의 네 projection인가: LoRA 논문이 어텐션에 붙이는 것으로 실험했고, 적은 파라미터로 효과가 좋아 기본 선택이 되었습니다. MLP 층(`gate_proj`, `up_proj`, `down_proj`)까지 붙이면 파라미터가 늘지만 성능이 더 오르는 경우가 많습니다(실습 5번).
+- `get_peft_model(model, config)` — 모델을 훑어 이름이 맞는 층을 찾아 `LoRALinear` 같은 것으로 감싸고, 나머지 파라미터는 전부 `requires_grad=False`로 바꿉니다. 돌려주는 객체는 원래 모델처럼 `forward`, `generate`를 그대로 쓸 수 있습니다.
+- `print_trainable_parameters()` — 학습 대상 파라미터 수와 비율. 108만 / 4.9억 ≈ 0.22%. 이 숫자를 보고 "얼린 것이 맞는지"를 확인합니다. 100%로 나오면 설정이 잘못된 것입니다.
 ## 학습 데이터: 모든 문장을 "~냥"으로 끝내는 고양이 챗봇
 
 효과가 눈에 바로 보이도록 말투를 바꿔 봅니다. 데이터는 (질문, 원하는 답) 쌍입니다.
@@ -140,6 +163,15 @@ print(tok.decode(ex["input_ids"]))
 print("손실을 계산하는 부분:", tok.decode([t for t in ex["labels"] if t != -100]))
 ```
 
+**코드 읽기**
+
+- `encode(question, answer)` — 학습 샘플 하나를 `input_ids`(모델이 보는 전체)와 `labels`(채점할 정답)로 만듭니다. 둘의 길이는 같습니다.
+- `prompt`를 `apply_chat_template(..., add_generation_prompt=True)`로 만드는 이유 — 추론 때 `chat()`이 쓰는 것과 **완전히 같은 형식**이어야 합니다. 학습 때와 추론 때 프롬프트 형식이 다르면 학습한 것이 발휘되지 않습니다.
+- `add_special_tokens=False` — 템플릿이 이미 필요한 특수 토큰을 넣었으므로, 토크나이저가 자동으로 또 붙이지 않게 합니다. 중복되면 모델이 학습 때 못 본 형식이 됩니다.
+- `answer + tok.eos_token` — 답 끝에 종료 토큰(`<|im_end|>`)을 붙입니다. 이것도 학습 대상에 넣어야 모델이 "여기서 멈춘다"를 배웁니다. 빼면 답을 끝낸 뒤에도 계속 말합니다(스스로 점검 Q3).
+- `[-100] * len(prompt_ids) + answer_ids` — 라벨에서 질문 부분을 `-100`으로. PyTorch의 `cross_entropy`는 정답이 `-100`인 위치를 손실 계산에서 **무시**합니다(`ignore_index` 기본값). 질문을 예측하는 능력은 필요 없고, 답을 생성하는 것만 배우게 하려는 것입니다.
+- `collate(batch)` — `DataLoader`가 샘플 여러 개를 배치 하나로 묶을 때 부르는 함수. 길이가 다른 문장을 하나의 텐서로 만들려면 짧은 것 뒤에 **패딩**을 붙여 길이를 맞춰야 합니다. `input_ids`에는 `pad_token_id`, `labels`에는 `-100`(채점 제외), `attention_mask`에는 0(어텐션에서 무시)을 붙입니다. 이 세 가지를 짝 맞춰 붙이는 것이 LLM 학습 코드에서 가장 실수가 잦은 부분입니다.
+- 마지막 두 `print` — 만든 샘플을 **디코딩해서 눈으로 확인**합니다. 템플릿, 종료 토큰, 마스킹이 의도대로 됐는지 여기서 안 보면 학습이 끝난 뒤에야 문제를 알게 됩니다.
 ## 학습 — 익숙한 그 루프
 
 `labels`를 같이 넘기면 Hugging Face 모델이 내부에서 "한 칸 밀기"([미니 GPT](#31-mini-gpt) 레슨의 x, y)와 cross entropy를 계산해 `loss`를 돌려줍니다.
@@ -164,6 +196,14 @@ for epoch in range(epochs):
     print(f"epoch {epoch+1}  loss {total / len(dl):.4f}")
 ```
 
+**코드 읽기**
+
+- `DataLoader([...], batch_size=4, shuffle=True, collate_fn=collate)` — 파이썬 리스트도 `Dataset`처럼 쓸 수 있습니다(`len`과 인덱싱만 되면 됨). `collate_fn`에 위의 함수를 넘겨 패딩을 맡깁니다. 배치 4는 작지만 데이터가 20개뿐이라 이 정도면 에폭당 5스텝입니다.
+- `[p for p in model.parameters() if p.requires_grad]` — LoRA 파라미터만 옵티마이저에 넘깁니다. [전이학습](#24-transfer-learning)과 같은 이유입니다.
+- `lr=2e-4` — LoRA 파인튜닝의 관례적 학습률. 전체 파인튜닝(1e-5 근처)보다 10배쯤 큽니다. LoRA 파라미터는 0에서 출발하는 작은 행렬이라 크게 움직여도 원래 모델이 망가지지 않기 때문입니다.
+- `model(**batch).loss` — `labels`를 함께 넘기면 Hugging Face 모델이 내부에서 로짓을 한 칸 밀어 정답과 맞추고 cross entropy까지 계산해 `.loss`로 돌려줍니다. [미니 GPT](#31-mini-gpt)의 `forward(idx, targets)`가 하던 일입니다.
+- 나머지 네 줄은 [텐서와 자동미분](#20-tensor-autograd)부터 이어져 온 그 루프입니다. 5억 파라미터 LLM도 학습 루프는 직선 맞추기와 같습니다.
+- `epochs = 5` — 20개 데이터로 5바퀴 = 100번 샘플을 봅니다. loss가 3.6 → 2.0으로 내려갑니다. 더 돌리면 외우기 시작합니다(실습 1번).
 ## 학습 후: 같은 질문 + 처음 보는 질문
 
 ```python
@@ -188,6 +228,11 @@ print(chat(loaded, "너는 누구야?"))
 # loaded.merge_and_unload() 를 쓰면 LoRA를 원래 가중치에 합쳐 일반 모델로 만들 수 있습니다
 ```
 
+**코드 읽기**
+
+- `model.save_pretrained("cat-lora")` — peft 모델의 `save_pretrained`는 **어댑터(A, B 행렬)와 설정만** 저장합니다. 몇 MB. 원래 모델 1GB는 저장하지 않습니다. 어댑터 파일만 공유하면 상대는 같은 베이스 모델을 받아 끼워 쓸 수 있습니다.
+- `PeftModel.from_pretrained(base, "cat-lora")` — 베이스 모델을 새로 불러온 뒤 어댑터를 얹습니다. 저장 → 불러오기 → 같은 답이 나오는지 확인하는 것으로 저장이 제대로 됐는지 검증합니다.
+- `merge_and_unload()` — `W + B·A`를 계산해 원래 `Linear`에 덮어쓰고 LoRA 층을 제거합니다. 추론 속도가 원래 모델과 같아지고 peft 없이도 쓸 수 있는 보통 모델이 됩니다. 배포할 때 씁니다.
 ## 핵심 정리
 
 - Hugging Face에서는 `from_pretrained(이름)` 한 줄로 모델과 토크나이저를 받습니다. 둘은 항상 짝입니다.
